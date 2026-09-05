@@ -1,7 +1,9 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Expose, Transform, Type } from 'class-transformer'
 import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator'
 
 export class CriarTarifaDto {
+  @ApiProperty({ example: 'Comum' })
   @IsString({ message: 'Categoria é obrigatória.' })
   @IsNotEmpty({ message: 'Categoria é obrigatória.' })
   @Transform(({ value }) => typeof value === 'string' ? value.trim() : value)
@@ -10,6 +12,7 @@ export class CriarTarifaDto {
   // `valor` é um alias legado de `valorHora` que ainda pode chegar de
   // integrações antigas. Precisa estar declarado aqui (mesmo sem uso direto)
   // para não ser barrado pelo forbidNonWhitelisted do ValidationPipe global.
+  @ApiPropertyOptional({ description: 'Alias legado de valorHora — preencha valorHora.', deprecated: true, example: 8 })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -18,12 +21,13 @@ export class CriarTarifaDto {
   // @Expose() é necessário aqui: sem ela, o class-transformer só roda o
   // @Transform de uma propriedade que exista no payload de origem — como
   // quem chega é `valor`, não `valorHora`, o alias nunca rodaria.
+  @ApiProperty({ example: 8, description: 'Valor cobrado por hora (ou fração).' })
   @Expose()
   @Transform(({ obj }) => {
     const bruto = obj.valorHora ?? obj.valor
     return bruto === undefined || bruto === null || bruto === '' ? bruto : Number(bruto)
   })
   @IsNumber({}, { message: 'Valor por hora é obrigatório.' })
-  @Min(0, { message: 'Valor por hora não pode ser negativo.' })
+  @Min(0.01, { message: 'Valor por hora deve ser maior que zero.' })
   valorHora!: number
 }

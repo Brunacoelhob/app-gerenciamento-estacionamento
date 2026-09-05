@@ -7,10 +7,34 @@ import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { NestExpressApplication } from '@nestjs/platform-express'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { AppModule } from './app.module'
 import { HttpExceptionFilter } from './common/filters/http-exception.filter'
 import { validationExceptionFactory } from './common/validation-exception-factory'
 import { createLogger } from './config/logger'
+
+const TAGS_SWAGGER = [
+  'Autenticação', 'Usuários', 'Vagas', 'Tarifas', 'Mensalistas', 'Mensalidades',
+  'Caixa', 'Tickets', 'Dashboard', 'Métricas', 'Analytics', 'Notificações', 'Auditoria',
+  'Financeiro', 'Despesas', 'Despesas Recorrentes',
+  'Perfil de RH', 'Ponto', 'Justificativas de Ponto', 'Trabalho Extra', 'Férias',
+  'Espelho de Ponto', 'Contrato de Trabalho', 'Folha de Pagamento', 'Desempenho',
+  'Etapas de Carreira', 'PDI', 'Assinatura Eletrônica', 'App'
+]
+
+function configurarSwagger (app: NestExpressApplication, logger: ReturnType<typeof createLogger>) {
+  const config = new DocumentBuilder()
+    .setTitle('ParkGestão API')
+    .setDescription('Documentação da API do ParkGestão — sistema de gestão de estacionamento, mensalistas, RH e financeiro.')
+    .setVersion('1.0')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
+
+  TAGS_SWAGGER.forEach(tag => config.addTag(tag))
+
+  const document = SwaggerModule.createDocument(app, config.build())
+  SwaggerModule.setup('docs', app, document)
+  logger.info('[Boot] Documentação Swagger disponível em /docs')
+}
 
 async function bootstrap () {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true })
@@ -67,6 +91,10 @@ async function bootstrap () {
   }))
   app.useGlobalFilters(new HttpExceptionFilter(logger))
   app.enableShutdownHooks()
+
+  if (!emProducao) {
+    configurarSwagger(app, logger)
+  }
 
   const port = configService.get<string>('PORT', '3001')
   await app.listen(port)
