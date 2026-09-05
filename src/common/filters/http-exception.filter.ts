@@ -36,11 +36,22 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const eNotFoundPadrao = status === HttpStatus.NOT_FOUND &&
           typeof objeto.message === 'string' && /^Cannot [A-Z]+ /.test(objeto.message)
 
+        // JSON malformado no corpo da requisição (chave sem aspas, vírgula
+        // sobrando, etc.) é pego pelo body-parser do Nest ANTES do
+        // ValidationPipe rodar, e vem embrulhado numa BadRequestException
+        // cuja mensagem é o texto cru do JSON.parse do V8 — sempre em
+        // inglês, sem opção de i18n. Normaliza pra uma mensagem em
+        // português, mesmo espírito do 404 "Cannot GET" acima.
+        const eJsonInvalido = status === HttpStatus.BAD_REQUEST &&
+          typeof objeto.message === 'string' && /JSON/.test(objeto.message)
+
         const mensagem = eNotFoundPadrao
           ? 'Rota não encontrada.'
-          : typeof objeto.erro === 'string'
-            ? objeto.erro
-            : (typeof objeto.message === 'string' ? objeto.message : 'Erro na requisição.')
+          : eJsonInvalido
+            ? 'JSON inválido no corpo da requisição. Verifique a sintaxe (chaves, aspas e vírgulas).'
+            : typeof objeto.erro === 'string'
+              ? objeto.erro
+              : (typeof objeto.message === 'string' ? objeto.message : 'Erro na requisição.')
         const { message: _mensagemDescartada, statusCode: _statusDescartado, error: _erroDescartado, ...resto } = objeto
         corpo = { erro: mensagem, ...resto }
       }

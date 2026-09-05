@@ -126,15 +126,19 @@ function criarPrismaFake (seed: {
 function criarService (seed?: Parameters<typeof criarPrismaFake>[0]) {
   const prismaFake = criarPrismaFake(seed)
   const emailServiceFake = { enviarComprovanteTicket: jest.fn() }
+  const auditoriaServiceFake = { registrar: jest.fn() }
   const service = new TicketsService(
     prismaFake as any,
     new CobrancaService(),
     new MensalidadeCicloService(),
     emailServiceFake as any,
-    new CaixaService(prismaFake as any)
+    new CaixaService(prismaFake as any),
+    auditoriaServiceFake as any
   )
-  return { service, prismaFake, emailServiceFake }
+  return { service, prismaFake, emailServiceFake, auditoriaServiceFake }
 }
+
+const ADMIN: any = { id: 'admin1', role: 'admin', nome: 'Admin', cpfPendente: false }
 
 describe('TicketsService', () => {
   describe('abrir', () => {
@@ -365,10 +369,25 @@ describe('TicketsService', () => {
   })
 
   describe('remover', () => {
-    it('remove o ticket pelo id', async () => {
-      const { service, prismaFake } = criarService({ tickets: [{ id: 't1', status: 'fechado' }] })
-      await service.remover('t1')
+    it('remove o ticket pelo id e audita a remoção', async () => {
+      const { service, prismaFake, auditoriaServiceFake } = criarService({ tickets: [{ id: 't1', status: 'fechado', placa: 'ABC1234' }] })
+      await service.remover('t1', ADMIN)
       expect(prismaFake.tickets.find((t: any) => t.id === 't1')).toBeUndefined()
+      expect(auditoriaServiceFake.registrar).toHaveBeenCalledWith(expect.objectContaining({ acao: 'ticket.remover', entidadeId: 't1' }))
+    })
+
+    it('recusa remover ticket inexistente', async () => {
+      const { service } = criarService()
+      await expect(service.remover('inexistente', ADMIN)).rejects.toBeInstanceOf(NotFoundException)
+    })
+
+    it('libera a vaga ao remover um ticket ainda aberto', async () => {
+      const { service, prismaFake } = criarService({
+        vagas: [{ id: 'v1', status: 'ocupada' }],
+        tickets: [{ id: 't1', status: 'aberto', vagaId: 'v1', placa: 'ABC1234' }]
+      })
+      await service.remover('t1', ADMIN)
+      expect(prismaFake.vagas.find((v: any) => v.id === 'v1').status).toBe('livre')
     })
   })
 })

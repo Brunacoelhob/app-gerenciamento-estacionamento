@@ -9,8 +9,15 @@ import {
 import type { ConfigService } from '@nestjs/config'
 import type { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcryptjs'
+import { OAuth2Client } from 'google-auth-library'
 import type { EmailService } from '../email/email.service'
 import { AuthService } from './auth.service'
+
+// AuthService instancia o próprio OAuth2Client no construtor (não é
+// injetado), então mockar o módulo inteiro é o jeito de controlar o
+// retorno de verifyIdToken sem fazer uma chamada de rede de verdade.
+jest.mock('google-auth-library', () => ({ OAuth2Client: jest.fn() }))
+const OAuth2ClientMock = OAuth2Client as unknown as jest.Mock
 
 // Ronda baixa só pra deixar o teste rápido — o código de produção sempre usa
 // 12 (ver AuthService.registrar/confirmarReset), essa constante é só pra
@@ -184,9 +191,36 @@ describe('AuthService', () => {
   })
 
   describe('google', () => {
+    function criarServiceComGoogle (
+      verifyIdToken: (...args: any[]) => any,
+      seed?: Parameters<typeof criarPrismaFake>[0]
+    ) {
+      OAuth2ClientMock.mockImplementation(() => ({ verifyIdToken }))
+      return criarService(seed, { GOOGLE_CLIENT_ID: 'client-id-teste' })
+    }
+
     it('recusa quando GOOGLE_CLIENT_ID não está configurado no servidor', async () => {
       const { service } = criarService({}, {})
       await expect(service.google({ credential: 'x' } as any)).rejects.toBeInstanceOf(ServiceUnavailableException)
+    })
+
+    it('recusa quando o e-mail do Google não está verificado (evita sequestrar uma conta local pelo mesmo e-mail)', async () => {
+      const { service } = criarServiceComGoogle(async () => ({
+        getPayload: () => ({ email: 'admin@empresa.com', name: 'Alguém', email_verified: false })
+      }), { usuarios: [{ id: 'u1', email: 'admin@empresa.com', role: 'admin', provedor: 'local', ativo: true }] })
+
+      await expect(service.google({ credential: 'tok' } as any)).rejects.toBeInstanceOf(UnauthorizedException)
+    })
+
+    it('aceita e cria a conta quando o e-mail do Google está verificado', async () => {
+      const { service, prismaFake } = criarServiceComGoogle(async () => ({
+        getPayload: () => ({ email: 'novo@example.com', name: 'Novo Usuário', email_verified: true })
+      }))
+
+      const resultado = await service.google({ credential: 'tok' } as any)
+
+      expect(resultado.usuario.email).toBe('novo@example.com')
+      expect(prismaFake.usuarios).toHaveLength(1)
     })
   })
 

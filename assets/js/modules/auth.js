@@ -696,13 +696,20 @@ async function abrirModalMeuPerfil () {
   let avatarSelecionado = sessao.avatar || ''
 
   const iniciaisAtuais = AuthService.iniciais(sessao.nome)
-  const avatarPreviewHtml = avatarSelecionado
-    ? `<img src="${avatarSelecionado}" alt="" class="perfil-avatar-preview-img">`
-    : iniciaisAtuais
 
+  // O preview inicial do avatar atual fica vazio de propósito (só as
+  // iniciais como placeholder) — quem preenche de fato é atualizarPreview(),
+  // chamada logo abaixo no didOpen, via createElement + propriedade .src
+  // (nunca interpolando avatarSelecionado num template de HTML). Mesmo a
+  // validação de formato no backend (só data URI de imagem, sem `<`/`>`/`"`
+  // possíveis no valor) já impedindo um avatar de escapar do atributo, não
+  // faz sentido este ser o único ponto do arquivo interpolando a string
+  // direto em HTML quando os outros dois (navbar e a própria atualização
+  // deste preview) já usam o jeito seguro — ver comentário em
+  // inicializarMenuUsuario, acima.
   const blocoAvatar = `
     <div class="text-center mb-4">
-      <div id="perfil-avatar-preview" class="user-avatar-circle-lg mx-auto mb-2">${avatarPreviewHtml}</div>
+      <div id="perfil-avatar-preview" class="user-avatar-circle-lg mx-auto mb-2">${iniciaisAtuais}</div>
       <span class="badge rounded-pill ${AuthService.classeBadgePapel(sessao.role)} mb-2">
         <i class="fas ${ehAdmin ? 'fa-user-shield' : 'fa-user'} me-1" aria-hidden="true"></i>${AuthService.rotuloPapel(sessao.role)}
       </span>
@@ -828,6 +835,9 @@ async function abrirModalMeuPerfil () {
           preview.textContent = iniciaisAtuais
         }
       }
+      // Preenche o preview com o avatar atual assim que o modal abre — o
+      // HTML inicial (acima) só tem as iniciais como placeholder.
+      atualizarPreview()
 
       // Galeria de avatares prontos (bichinhos)
       const galeria = document.getElementById('perfil-galeria-avatares')

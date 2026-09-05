@@ -94,7 +94,7 @@ function blocoEnderecoHtml (prefixo, valores = {}) {
       <label class="form-label fw-bold">CEP</label>
       <div class="input-group">
         <input id="${prefixo}-cep" class="form-control" inputmode="numeric" maxlength="9"
-          placeholder="00000-000" value="${valores.cep || ''}">
+          placeholder="00000-000" value="${ApiService.sanitizeText(valores.cep || '')}">
         <button type="button" class="btn btn-outline-secondary" id="${prefixo}-btn-buscar-cep">
           <i class="fas fa-search me-1" aria-hidden="true"></i>Buscar
         </button>
@@ -104,31 +104,31 @@ function blocoEnderecoHtml (prefixo, valores = {}) {
     <div class="row g-2 text-start mb-3">
       <div class="col-8">
         <label class="form-label fw-bold">Rua</label>
-        <input id="${prefixo}-rua" class="form-control" value="${valores.rua || ''}">
+        <input id="${prefixo}-rua" class="form-control" value="${ApiService.sanitizeText(valores.rua || '')}">
       </div>
       <div class="col-4">
         <label class="form-label fw-bold">Número</label>
-        <input id="${prefixo}-numero" class="form-control" value="${valores.numero || ''}">
+        <input id="${prefixo}-numero" class="form-control" value="${ApiService.sanitizeText(valores.numero || '')}">
       </div>
     </div>
     <div class="row g-2 text-start mb-3">
       <div class="col-6">
         <label class="form-label fw-bold">Complemento <span class="text-muted fw-normal">(opcional)</span></label>
-        <input id="${prefixo}-complemento" class="form-control" value="${valores.complemento || ''}">
+        <input id="${prefixo}-complemento" class="form-control" value="${ApiService.sanitizeText(valores.complemento || '')}">
       </div>
       <div class="col-6">
         <label class="form-label fw-bold">Bairro</label>
-        <input id="${prefixo}-bairro" class="form-control" value="${valores.bairro || ''}">
+        <input id="${prefixo}-bairro" class="form-control" value="${ApiService.sanitizeText(valores.bairro || '')}">
       </div>
     </div>
     <div class="row g-2 text-start mb-3">
       <div class="col-8">
         <label class="form-label fw-bold">Cidade</label>
-        <input id="${prefixo}-cidade" class="form-control" value="${valores.cidade || ''}">
+        <input id="${prefixo}-cidade" class="form-control" value="${ApiService.sanitizeText(valores.cidade || '')}">
       </div>
       <div class="col-4">
         <label class="form-label fw-bold">Estado (UF)</label>
-        <input id="${prefixo}-estado" class="form-control" maxlength="2" value="${valores.estado || ''}">
+        <input id="${prefixo}-estado" class="form-control" maxlength="2" value="${ApiService.sanitizeText(valores.estado || '')}">
       </div>
     </div>
   `

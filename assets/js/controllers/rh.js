@@ -573,7 +573,7 @@
       classes.push('fce-selecionado-inicio')
     }
 
-    const tituloTexto = (titulo.join(' • ') || `Dia ${dia}`).replace(/"/g, '&quot;')
+    const tituloTexto = ApiService.sanitizeText(titulo.join(' • ') || `Dia ${dia}`)
     return `<button type="button" class="${classes.join(' ')}" data-iso="${iso}" title="${tituloTexto}" aria-label="${tituloTexto}">
       <span class="fce-dia-numero">${dia}</span>
       <span class="fce-dia-dots">${dotsHtml}</span>

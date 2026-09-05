@@ -42,20 +42,26 @@ export class MensalistasService {
   // ou reativar um mensalista não cobra nada por si só — a cobrança só
   // acontece quando ele de fato estaciona e fecha um ticket sem ter um ciclo
   // vigente (ver TicketsService.fechar e MensalidadeCicloService).
-  async criar (dto: CriarMensalistaDto) {
+  async criar (dto: CriarMensalistaDto, solicitante: UsuarioAutenticado) {
+    // Mesma defesa em profundidade de `atualizar`: valorMensalidade só é
+    // aceito do corpo quando quem cadastra é admin — senão nasce em 0 e
+    // precisa ser ajustado depois por um admin. Sem essa checagem, qualquer
+    // funcionário autenticado conseguia se auto-cadastrar como mensalista
+    // com valorMensalidade: 0 e estacionar de graça indefinidamente.
     try {
-      return await this.prisma.mensalista.create({
+      const criado = await this.prisma.mensalista.create({
         data: {
           nome: dto.nome,
           cpf: dto.cpf,
           placa: dto.placa,
           telefone: dto.telefone,
           email: dto.email || null,
-          valorMensalidade: dto.valorMensalidade || 0,
+          valorMensalidade: solicitante.role === 'admin' ? (dto.valorMensalidade || 0) : 0,
           categoriaPlano: dto.categoriaPlano || 'Mensal Integral',
           ativo: dto.ativo !== undefined ? dto.ativo : true
         }
       })
+      return solicitante.role === 'admin' ? criado : { ...criado, cpf: mascararCpf(criado.cpf) }
     } catch (erro) {
       if (ehConflitoUnico(erro)) {
         const alvo = (erro.meta?.target as string[] | undefined) || []
@@ -91,7 +97,8 @@ export class MensalistasService {
     if (dto.ativo !== undefined) data.ativo = dto.ativo
 
     try {
-      return await this.prisma.mensalista.update({ where: { id }, data })
+      const atualizado = await this.prisma.mensalista.update({ where: { id }, data })
+      return solicitante.role === 'admin' ? atualizado : { ...atualizado, cpf: mascararCpf(atualizado.cpf) }
     } catch (erro) {
       if (ehConflitoUnico(erro)) {
         const alvo = (erro.meta?.target as string[] | undefined) || []

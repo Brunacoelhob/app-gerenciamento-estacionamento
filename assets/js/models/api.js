@@ -7,11 +7,26 @@ const API_BASE_URL = 'http://localhost:3001'
 
 class ApiService {
   // --- MÉTODOS AUXILIARES DE SEGURANÇA & SANITIZAÇÃO ---
+  //
+  // Escapa os 5 caracteres perigosos de HTML — inclusive aspas simples e
+  // duplas. A implementação antiga (`div.textContent = str; return
+  // div.innerHTML`) só escapava `&`/`<`/`>`, porque a serialização de nó de
+  // texto do navegador nunca precisa escapar aspas em contexto de TEXTO —
+  // mas várias telas usam sanitizeText() para interpolar dado de servidor
+  // dentro de um ATRIBUTO delimitado por aspas (`aria-label="..."`,
+  // `title="..."`, `value="..."`), onde uma aspa não escapada fecha o
+  // atributo e permite injetar atributos/handlers novos na tag (ex.:
+  // `nome` de mensalista = `Fulano" onmouseover="alert(1)`). Escapar
+  // sempre os 5 caracteres é seguro em QUALQUER contexto (texto ou
+  // atributo), então não há motivo pra manter duas funções diferentes.
   static sanitizeText (str) {
     if (!str && str !== 0) return ''
-    const temp = document.createElement('div')
-    temp.textContent = String(str)
-    return temp.innerHTML
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
   }
 
   // Checagem de Saúde do Servidor (Evita travamentos "Verificando servidor...")

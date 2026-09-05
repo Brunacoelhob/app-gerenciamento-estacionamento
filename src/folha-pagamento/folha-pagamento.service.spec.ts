@@ -55,6 +55,17 @@ function criarPrismaFake (seed: { perfis?: any[], holerites?: any[], assinaturas
         Object.assign(holerite, data)
         return holerite
       },
+      async updateMany ({ where: { id, status }, data }: any) {
+        const holerite = holerites.find(h => h.id === id && h.status === status)
+        if (!holerite) return { count: 0 }
+        Object.assign(holerite, data)
+        return { count: 1 }
+      },
+      async findUniqueOrThrow ({ where: { id } }: any) {
+        const holerite = holerites.find(h => h.id === id)
+        if (!holerite) throw new Error('Holerite não encontrado (findUniqueOrThrow).')
+        return holerite
+      },
       async findMany ({ where }: any) {
         return holerites.filter(h => !where?.usuarioId || h.usuarioId === where.usuarioId)
       }
@@ -192,6 +203,25 @@ describe('FolhaPagamentoService', () => {
       expect(resultado.status).toBe('pago')
       expect(prismaFake.holerites[0].pagoEm).toBeInstanceOf(Date)
       expect(auditoriaFake.registrar).toHaveBeenCalledWith(expect.objectContaining({ acao: 'holerite.pagar' }))
+    })
+
+    it('recusa a segunda de duas chamadas concorrentes de pagar (transição atômica via updateMany)', async () => {
+      // Regressão: antes, duas chamadas concorrentes liam o mesmo status
+      // 'assinado' (findUnique) e ambas passavam pelas guardas antes de
+      // qualquer update comitar, gravando dois registros de auditoria de
+      // pagamento para o mesmo holerite. Como o fake de `updateMany` aqui
+      // já reflete a condição `where: { id, status: 'assinado' }`, chamar
+      // pagar() duas vezes em sequência simula exatamente essa corrida: a
+      // segunda chamada encontra count=0 e deve virar 409, não um segundo
+      // pagamento silencioso.
+      const { service, auditoriaFake } = criarService({
+        holerites: [{ id: 'h1', usuarioId: 'u1', referencia: MES_PASSADO, status: 'assinado', salarioLiquido: 2000 }]
+      })
+      const solicitante: any = { id: 'rh1', role: 'rh' }
+
+      await service.pagar('h1', solicitante)
+      await expect(service.pagar('h1', solicitante)).rejects.toBeInstanceOf(ConflictException)
+      expect(auditoriaFake.registrar).toHaveBeenCalledTimes(1)
     })
   })
 

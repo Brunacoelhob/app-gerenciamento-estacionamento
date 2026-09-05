@@ -124,12 +124,22 @@ describe('UsuariosService', () => {
       expect(usuario.role).toBe('rh')
     })
 
-    it('rebaixa role desconhecido para funcionario (defesa em profundidade além do DTO)', async () => {
+    it('recusa role desconhecido em vez de rebaixar silenciosamente (defesa em profundidade além do DTO)', async () => {
+      // Rebaixar sem avisar escondia erro operacional (ex.: um admin achando
+      // que concedeu 'financeiro' e, na verdade, criando um 'funcionario'
+      // comum, sem nenhum sinal disso) — ver Achado 16 da auditoria.
+      const { service } = criarService()
+      await expect(service.criarFuncionario({
+        nome: 'X', email: 'x@teste.com', senha: 'SenhaForte1!', role: 'superadmin'
+      } as any)).rejects.toBeInstanceOf(BadRequestException)
+    })
+
+    it('aceita o papel financeiro', async () => {
       const { service } = criarService()
       const usuario: any = await service.criarFuncionario({
-        nome: 'X', email: 'x@teste.com', senha: 'SenhaForte1!', role: 'superadmin'
+        nome: 'X', email: 'x@teste.com', senha: 'SenhaForte1!', role: 'financeiro'
       } as any)
-      expect(usuario.role).toBe('funcionario')
+      expect(usuario.role).toBe('financeiro')
     })
 
     it('recusa e-mail já cadastrado', async () => {
@@ -168,6 +178,27 @@ describe('UsuariosService', () => {
       const solicitante: any = { id: 'u1', role: 'funcionario' }
       await expect(service.atualizarPerfil('u1', { senha: 'NovaSenha1!', senhaAtual: 'Errada1!' } as any, solicitante))
         .rejects.toBeInstanceOf(BadRequestException)
+    })
+
+    it('recusa troca de senha do próprio dono quando senhaAtual não é enviada (não pode mais ser pulada só por omissão do campo)', async () => {
+      // Regressão: antes bastava o cliente OMITIR senhaAtual para pular a
+      // checagem inteira, mesmo numa conta com senha definitiva — um token
+      // JWT vazado virava sequestro de conta permanente.
+      const senhaHash = await bcrypt.hash('SenhaCerta1!', RONDA_BCRYPT_TESTE)
+      const { service, prismaFake } = criarService({ usuarios: [{ id: 'u1', senha: senhaHash, senhaTemporaria: false }] })
+      const solicitante: any = { id: 'u1', role: 'funcionario' }
+      await expect(service.atualizarPerfil('u1', { senha: 'NovaSenha1!' } as any, solicitante))
+        .rejects.toBeInstanceOf(BadRequestException)
+      expect(await bcrypt.compare('NovaSenha1!', prismaFake.usuarios[0].senha)).toBe(false)
+    })
+
+    it('permite trocar a senha sem senhaAtual quando a conta está marcada como senhaTemporaria (reset/senha provisória do admin)', async () => {
+      const { service, prismaFake } = criarService({ usuarios: [{ id: 'u1', senha: 'hash-provisorio', senhaTemporaria: true }] })
+      const solicitante: any = { id: 'u1', role: 'funcionario' }
+
+      await service.atualizarPerfil('u1', { senha: 'NovaSenha1!' } as any, solicitante)
+
+      expect(await bcrypt.compare('NovaSenha1!', prismaFake.usuarios[0].senha)).toBe(true)
     })
 
     it('troca a senha quando a senha atual confere, e marca como definitiva (não temporária)', async () => {

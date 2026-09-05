@@ -136,6 +136,13 @@ export class FolhaPagamentoService {
   // Só RH/admin (RolesGuard no controller) — "pagamento" é sempre simulado,
   // mas exige assinatura prévia e não pode ser repetido (protege contra
   // pagar duas vezes por engano).
+  //
+  // A transição em si é atômica (updateMany condicionado a status:
+  // 'assinado', não um findUnique + update em dois passos): duas chamadas
+  // concorrentes liam o mesmo status antes do fix, passavam as duas pelas
+  // guardas acima e gravavam dois registros de auditoria de pagamento para
+  // o mesmo holerite, quebrando a garantia de "não pode ser repetido" que
+  // o comentário promete.
   async pagar (id: string, solicitante: UsuarioAutenticado) {
     const holerite = await this.prisma.holerite.findUnique({ where: { id } })
     if (!holerite) {
@@ -148,10 +155,14 @@ export class FolhaPagamentoService {
       throw new ConflictException('Este holerite já foi pago.')
     }
 
-    const atualizado = await this.prisma.holerite.update({
-      where: { id },
+    const { count } = await this.prisma.holerite.updateMany({
+      where: { id, status: 'assinado' },
       data: { status: 'pago', pagoEm: new Date() }
     })
+    if (count === 0) {
+      throw new ConflictException('Este holerite já foi pago.')
+    }
+    const atualizado = await this.prisma.holerite.findUniqueOrThrow({ where: { id } })
 
     await this.auditoriaService.registrar({
       usuarioId: solicitante.id,

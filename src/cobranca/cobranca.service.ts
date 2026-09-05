@@ -27,7 +27,12 @@ export class CobrancaService {
   calcularTarifaAvulsa (diffMinutos: number, valorHora: number | undefined, vagaCoberta = false): number {
     if (diffMinutos <= TEMPO_TOLERANCIA_MINUTOS) return 0
 
-    const valorHoraBase = valorHora ?? VALOR_HORA_PADRAO
+    // Checagem explícita (não `??`): um valorHora de 0 é "presente", não
+    // "ausente", então `??`/`||` sozinhos deixariam passar uma tarifa
+    // zerada sem cair no padrão — a trava de `@Min(0.01)` no DTO já deveria
+    // impedir isso na origem, mas esta é a defesa em profundidade caso um
+    // valor inválido chegue aqui por outro caminho (dado legado, etc.).
+    const valorHoraBase = typeof valorHora === 'number' && valorHora > 0 ? valorHora : VALOR_HORA_PADRAO
     const valorHoraFinal = vagaCoberta
       ? valorHoraBase + ADICIONAL_VAGA_COBERTA_VALOR
       : valorHoraBase

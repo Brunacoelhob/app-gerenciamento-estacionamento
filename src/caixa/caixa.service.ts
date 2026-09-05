@@ -1,7 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import type { Prisma } from '../../generated/prisma'
+import { ehConflitoUnico } from '../common/utils/prisma-erro.util'
 import { PrismaService } from '../prisma/prisma.service'
-import { dataSemHora, rangeDoDiaDoBanco } from './caixa-datas.util'
+import { dataSemHora, ehHojeNoBanco, rangeDoDiaDoBanco } from './caixa-datas.util'
 import { AbrirCaixaDto } from './dto/abrir-caixa.dto'
 import { FecharCaixaDto } from './dto/fechar-caixa.dto'
 
@@ -83,10 +84,22 @@ export class CaixaService {
       throw new ConflictException('O caixa de hoje já foi aberto.')
     }
 
-    return await this.prisma.caixaDiario.create({
-      data: { data: hoje, valorAbertura: dto.valorAbertura, abertoPorId: usuarioId },
-      include: { abertoPor: { select: { nome: true } } }
-    })
+    // findUnique acima é só o caminho feliz — CaixaDiario.data é @unique, e
+    // duas aberturas concorrentes (dois operadores no início do turno)
+    // podiam passar as duas pela checagem antes de qualquer create
+    // comitar; sem capturar o P2002 aqui, a segunda virava 500 em vez do
+    // 409 já documentado.
+    try {
+      return await this.prisma.caixaDiario.create({
+        data: { data: hoje, valorAbertura: dto.valorAbertura, abertoPorId: usuarioId },
+        include: { abertoPor: { select: { nome: true } } }
+      })
+    } catch (erro) {
+      if (ehConflitoUnico(erro)) {
+        throw new ConflictException('O caixa de hoje já foi aberto.')
+      }
+      throw erro
+    }
   }
 
   async fechar (id: string, dto: FecharCaixaDto, usuarioId: string) {
@@ -97,6 +110,14 @@ export class CaixaService {
       }
       if (caixa.status !== 'aberto') {
         throw new ConflictException('Este caixa já foi fechado.')
+      }
+      // Só o caixa DE HOJE pode ser fechado por esta rota — sem essa
+      // checagem, o id de qualquer caixa (passado, ou futuro se algum dia
+      // existir) era aceito, e não existe rota de reabertura: fechar o
+      // caixa errado travava `verificarAbertoParaTicket` até um admin
+      // intervir direto no banco.
+      if (!ehHojeNoBanco(caixa.data)) {
+        throw new ConflictException('Só é possível fechar o caixa do dia atual.')
       }
 
       const valorEsperadoFechamento = await this.calcularValorEsperado(tx, caixa)

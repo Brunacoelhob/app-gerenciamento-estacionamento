@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
 import type { Prisma } from '../../generated/prisma'
+import { AuditoriaService } from '../auditoria/auditoria.service'
+import type { UsuarioAutenticado } from '../common/guards/jwt-auth.guard'
 import { CaixaService } from '../caixa/caixa.service'
 import { CobrancaService } from '../cobranca/cobranca.service'
 import { EmailService } from '../email/email.service'
@@ -26,7 +28,8 @@ export class TicketsService {
     private readonly cobrancaService: CobrancaService,
     private readonly mensalidadeCicloService: MensalidadeCicloService,
     private readonly emailService: EmailService,
-    private readonly caixaService: CaixaService
+    private readonly caixaService: CaixaService,
+    private readonly auditoriaService: AuditoriaService
   ) {}
 
   private montarWhere ({ status, termo }: FiltrosListarTickets): Prisma.TicketWhereInput {
@@ -108,7 +111,17 @@ export class TicketsService {
         throw new ConflictException(`A placa ${placaNormalizada} já possui um ticket aberto.`)
       }
 
-      let mensalistaFinalId = dto.mensalistaId || null
+      // O mensalistaId do corpo nunca é aceito às cegas: sem essa checagem,
+      // um cliente podia abrir o ticket do próprio carro apontando pra
+      // qualquer mensalista ativo (ex.: via GET /mensalistas) e sair isento
+      // no fechamento, sem que o mensalista de fato dono do ciclo notasse.
+      let mensalistaFinalId: string | null = null
+      if (dto.mensalistaId) {
+        const mensalistaInformado = await tx.mensalista.findUnique({ where: { id: dto.mensalistaId } })
+        if (mensalistaInformado && mensalistaInformado.ativo && mensalistaInformado.placa === placaNormalizada) {
+          mensalistaFinalId = mensalistaInformado.id
+        }
+      }
       if (!mensalistaFinalId) {
         const mensalista = await tx.mensalista.findFirst({ where: { placa: placaNormalizada, ativo: true } })
         if (mensalista) mensalistaFinalId = mensalista.id
@@ -200,8 +213,66 @@ export class TicketsService {
     })
   }
 
-  async remover (id: string) {
-    await this.prisma.ticket.delete({ where: { id } })
+  // Remove o ticket e, se ele ainda estava aberto, libera a vaga na mesma
+  // transação — sem isso, apagar um ticket aberto deixava a vaga presa em
+  // "ocupada" para sempre (só `fechar()` devolve a vaga a "livre"). Um
+  // ticket é o registro primário de receita avulsa, então a exclusão fica
+  // restrita a admin (ver RolesGuard no controller) e sempre deixa rastro
+  // em auditoria — antes não havia checagem de papel nem log nenhum aqui.
+  async remover (id: string, solicitante: UsuarioAutenticado) {
+    const ticketRemovido = await this.prisma.$transaction(async tx => {
+      const ticket = await tx.ticket.findUnique({ where: { id } })
+      if (!ticket) {
+        throw new NotFoundException('Ticket não encontrado.')
+      }
+      await tx.ticket.delete({ where: { id } })
+      if (ticket.status === 'aberto') {
+        await tx.vaga.update({ where: { id: ticket.vagaId }, data: { status: 'livre' } })
+      }
+      return ticket
+    })
+
+    await this.auditoriaService.registrar({
+      usuarioId: solicitante.id,
+      papel: solicitante.role,
+      acao: 'ticket.remover',
+      entidade: 'Ticket',
+      entidadeId: id,
+      dadosAntes: { placa: ticketRemovido.placa, status: ticketRemovido.status, valorTotal: ticketRemovido.valorTotal?.toString() ?? null }
+    })
+  }
+
+  /**
+   * KPIs de faturamento avulso (tela de Faturamento, bloco separado do de
+   * mensalistas) — "avulso" aqui é todo ticket sem mensalistaId, ou seja,
+   * cobrado por tarifa/hora em vez de entrar no ciclo de Mensalidade
+   * (ver fechar() acima). Mantido fora de MensalidadesService de propósito,
+   * pra não misturar as duas fontes de receita no mesmo cálculo.
+   */
+  async calcularKpisAvulsos () {
+    const agora = new Date()
+
+    const ticketsAvulsos = await this.prisma.ticket.findMany({
+      where: { mensalistaId: null },
+      select: { status: true, dataSaida: true, valorTotal: true }
+    })
+
+    const fechadosNoMes = ticketsAvulsos.filter(t =>
+      t.status === 'fechado' &&
+      t.dataSaida &&
+      t.dataSaida.getMonth() === agora.getMonth() &&
+      t.dataSaida.getFullYear() === agora.getFullYear()
+    )
+
+    const receitaMesAtual = fechadosNoMes.reduce((soma, t) => soma + Number(t.valorTotal || 0), 0)
+    const abertosAgora = ticketsAvulsos.filter(t => t.status === 'aberto').length
+
+    return {
+      receitaMesAtual,
+      quantidadeMesAtual: fechadosNoMes.length,
+      ticketMedio: fechadosNoMes.length > 0 ? receitaMesAtual / fechadosNoMes.length : 0,
+      abertosAgora
+    }
   }
 
   /**

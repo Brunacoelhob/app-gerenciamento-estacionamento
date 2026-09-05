@@ -15,8 +15,14 @@ export class JustificativasPontoService {
   ) {}
 
   // Só RH/admin criam (RolesGuard no controller) — o próprio funcionário
-  // nunca lança a própria justificativa.
+  // nunca lança a própria justificativa. O guard só garante o papel, não
+  // que o alvo seja outra pessoa — por isso a checagem explícita abaixo:
+  // sem ela, um usuário rh/admin conseguia abonar as próprias faltas.
   async criar (dto: CriarJustificativaDto, solicitante: UsuarioAutenticado) {
+    if (dto.usuarioId === solicitante.id) {
+      throw new ForbiddenException('Você não pode lançar uma justificativa para si mesmo.')
+    }
+
     const perfil = await this.prisma.perfilRH.findUnique({ where: { usuarioId: dto.usuarioId } })
     if (!perfil) {
       throw new NotFoundException('Funcionário sem perfil de RH cadastrado.')

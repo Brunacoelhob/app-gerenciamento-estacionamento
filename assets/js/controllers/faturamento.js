@@ -150,7 +150,7 @@ function popularFiltroReferencia () {
 
   select.innerHTML = '<option value="TODOS">Todos os meses</option>' +
     referencias
-      .map(ref => `<option value="${ref}">${formatarReferenciaFaturamento(ref)}</option>`)
+      .map(ref => `<option value="${ApiService.sanitizeText(ref)}">${ApiService.sanitizeText(formatarReferenciaFaturamento(ref))}</option>`)
       .join('')
 
   if (referencias.includes(valorAtual)) select.value = valorAtual
@@ -301,7 +301,7 @@ function atualizarResumoChurn (lista) {
           <div class="fw-semibold">${ApiService.sanitizeText(mv.mensalista?.nome || '-')}</div>
           <div class="text-muted text-xs">${ApiService.sanitizeText(mv.mensalista?.placa || '-')}</div>
         </td>
-        <td>${formatarReferenciaFaturamento(mv.referencia)}</td>
+        <td>${ApiService.sanitizeText(formatarReferenciaFaturamento(mv.referencia))}</td>
         <td>R$ ${Number(mv.valor || 0).toFixed(2).replace('.', ',')}</td>
         <td>${ApiService.sanitizeText(mv.motivoCancelamento || '-')}</td>
       </tr>
@@ -364,7 +364,7 @@ function abrirDetalhesKpiFaturamento (chave) {
   if (typeof Swal === 'undefined') return
 
   const d = kpiFaturamentoDetalhes
-  const refFormatada = formatarReferenciaFaturamento(d.referencia)
+  const refFormatada = ApiService.sanitizeText(formatarReferenciaFaturamento(d.referencia))
 
   let title = ''
   let html = ''
@@ -489,7 +489,7 @@ function renderLinhaFaturamento (mv, tbody) {
       <div class="text-muted text-xs">${ApiService.sanitizeText(mv.mensalista?.categoriaPlano || '-')}</div>
     </td>
     <td><span class="badge bg-dark text-white">${ApiService.sanitizeText(mv.mensalista?.placa || '-')}</span></td>
-    <td>${formatarReferenciaFaturamento(mv.referencia)}</td>
+    <td>${ApiService.sanitizeText(formatarReferenciaFaturamento(mv.referencia))}</td>
     <td>${formatarDataFaturamento(mv.dataInicio)} a ${formatarDataFaturamento(mv.dataFim)}</td>
     <td>R$ ${Number(mv.valor || 0).toFixed(2).replace('.', ',')}</td>
     <td>${statusBadge}${auditoria}</td>

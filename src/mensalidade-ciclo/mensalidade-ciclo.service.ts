@@ -32,10 +32,14 @@ export class MensalidadeCicloService {
 
   // Ciclo mais recente do mensalista que ainda cobre a data informada (a
   // data de entrada do ticket sendo fechado, normalmente) — null se ele
-  // nunca teve um ciclo, ou se o último já venceu antes dessa data.
+  // nunca teve um ciclo, ou se o último já venceu antes dessa data. Filtra
+  // status: 'paga' (mesmo critério de "ciclo ativo" usado em
+  // MensalidadesService.calcularKpis) — sem isso, um ciclo cancelado
+  // manualmente na tela de Faturamento continuava contando como cobertura
+  // vigente, dando estacionamento grátis pelo resto do período cancelado.
   buscarCicloVigente (tx: TransactionClient, mensalistaId: string, dataReferencia: Date) {
     return tx.mensalidade.findFirst({
-      where: { mensalistaId, dataFim: { gte: dataReferencia } },
+      where: { mensalistaId, dataFim: { gte: dataReferencia }, status: 'paga' },
       orderBy: { dataInicio: 'desc' }
     })
   }

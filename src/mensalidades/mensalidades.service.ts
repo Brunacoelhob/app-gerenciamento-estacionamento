@@ -98,7 +98,12 @@ export class MensalidadesService {
   // usuarioId vem do token de quem chamou o PATCH — sempre um operador
   // agindo na tela de Faturamento (marcar como paga / cancelar), nunca a
   // cobrança automática do fechamento de ticket, que não passa por aqui.
-  atualizar (id: string, dto: AtualizarMensalidadeDto, usuarioId: string) {
+  async atualizar (id: string, dto: AtualizarMensalidadeDto, usuarioId: string) {
+    const existente = await this.prisma.mensalidade.findUnique({ where: { id } })
+    if (!existente) {
+      throw new NotFoundException('Cobrança não encontrada.')
+    }
+
     return this.prisma.mensalidade.update({
       where: { id },
       data: {

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { AuditoriaService } from '../auditoria/auditoria.service'
 import type { UsuarioAutenticado } from '../common/guards/jwt-auth.guard'
 import { ehGestaoDeRh } from '../common/utils/papel.util'
@@ -68,6 +68,11 @@ export class TrabalhoExtraService {
     }
     if (solicitacao.status !== 'pendente') {
       throw new ConflictException('Esta solicitação já foi decidida.')
+    }
+    // Ninguém aprova a própria hora extra (paga com 100% de adicional) —
+    // sem essa checagem, um usuário rh/admin conseguia se auto-autorizar.
+    if (solicitacao.usuarioId === solicitante.id) {
+      throw new ForbiddenException('Você não pode decidir a própria solicitação de trabalho extra.')
     }
 
     const atualizada = await this.prisma.solicitacaoTrabalhoExtra.update({

@@ -588,7 +588,7 @@ function montarLinhasCobrancas (mensalidades) {
 
       return `
         <tr>
-          <td>${formatarReferenciaMensalidade(mv.referencia)}</td>
+          <td>${ApiService.sanitizeText(formatarReferenciaMensalidade(mv.referencia))}</td>
           <td>${formatarDataMensalidade(mv.dataInicio)} a ${formatarDataMensalidade(mv.dataFim)}</td>
           <td>${diasTexto}</td>
           <td>R$ ${Number(mv.valor || 0).toFixed(2).replace('.', ',')}</td>

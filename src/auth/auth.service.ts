@@ -151,6 +151,15 @@ export class AuthService {
     if (!email) {
       throw new BadRequestException('Não foi possível ler os dados da conta Google.')
     }
+    // O Google permite cadastrar uma conta com e-mail ainda não confirmado
+    // (ex.: alias corporativo recém-criado, e-mail de terceiro digitado por
+    // engano). Sem exigir email_verified, um ID token válido mas com e-mail
+    // não confirmado bastava pra entrar direto numa conta LOCAL já existente
+    // com o mesmo e-mail — inclusive uma conta admin — sem nunca provar dono
+    // de fato daquele endereço.
+    if (!payload?.email_verified) {
+      throw new UnauthorizedException('O e-mail da conta Google precisa estar verificado.')
+    }
 
     let usuario = await this.prisma.usuario.findUnique({ where: { email } })
     if (!usuario) {

@@ -23,7 +23,10 @@ Thumbs.db
 .sass-cache/
 *.css.map
 
-# Backup local do seed (não confundir com prisma/db.json, que é versionado)
+# Dados de seed local (prisma/seed.js) — guarda senha de demonstração em
+# texto puro, não deve ser versionado. Continua existindo localmente pra
+# quem já tem o arquivo; só deixa de ser rastreado pelo git a partir daqui.
+prisma/db.json
 prisma/db.json.bak
 
 # Build/dist temporários (caso algum dia haja etapa de build separada)

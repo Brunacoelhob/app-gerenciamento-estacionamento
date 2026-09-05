@@ -9,13 +9,23 @@ import { PrismaService } from '../prisma/prisma.service'
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto'
 import { CriarUsuarioDto } from './dto/criar-usuario.dto'
 
-const PAPEIS_VALIDOS = ['admin', 'rh', 'gestor', 'funcionario']
+// Espelha exatamente o enum Papel do schema.prisma — mantido explícito (não
+// derivado em runtime do client do Prisma) para ficar óbvio que qualquer
+// papel novo no enum precisa ser adicionado aqui também.
+const PAPEIS_VALIDOS = ['admin', 'rh', 'gestor', 'funcionario', 'financeiro']
 
-// Normaliza qualquer valor fora de PAPEIS_VALIDOS para 'funcionario' (nunca
-// concede um papel elevado por engano) — os DTOs já validam com @IsIn, isto
-// é só a segunda camada de defesa dentro do service.
-function normalizarRole (role: string | undefined): 'admin' | 'rh' | 'gestor' | 'funcionario' {
-  return PAPEIS_VALIDOS.includes(role || '') ? (role as 'admin' | 'rh' | 'gestor' | 'funcionario') : 'funcionario'
+// Segunda camada de defesa (os DTOs já validam com @IsIn): recusa
+// explicitamente qualquer valor fora de PAPEIS_VALIDOS, em vez de rebaixar
+// silenciosamente para 'funcionario'. A lista aqui já esteve desalinhada do
+// enum Papel (sem 'financeiro') — rebaixar sem avisar significava que um
+// admin podia achar que tinha concedido acesso de financeiro e, na
+// verdade, ter criado uma conta comum, sem erro nenhum indicando isso.
+function normalizarRole (role: string | undefined): 'admin' | 'rh' | 'gestor' | 'funcionario' | 'financeiro' {
+  if (role === undefined) return 'funcionario'
+  if (!PAPEIS_VALIDOS.includes(role)) {
+    throw new BadRequestException('Papel de usuário inválido.')
+  }
+  return role as 'admin' | 'rh' | 'gestor' | 'funcionario' | 'financeiro'
 }
 
 function semSenha (usuario: Usuario) {
@@ -108,14 +118,24 @@ export class UsuariosService {
     if (dto.avatar !== undefined) dados.avatar = dto.avatar
 
     if (dto.senha) {
-      // Quando o dono da conta troca a própria senha pelo "Meu Perfil" e
-      // manda a senha atual, confirmamos com bcrypt antes de trocar — evita
-      // que alguém com a sessão aberta troque a senha sem saber a atual. A
-      // troca obrigatória (temporária/expirada) não manda senhaAtual, então
-      // pula essa checagem — o usuário já provou identidade ao logar.
-      if (dto.senhaAtual) {
-        const usuarioAtual = await this.prisma.usuario.findUnique({ where: { id } })
-        const confere = usuarioAtual?.senha && (await bcrypt.compare(dto.senhaAtual, usuarioAtual.senha))
+      // Quando o dono da conta troca a própria senha pelo "Meu Perfil",
+      // exigimos a senha atual — mas a exigência é decidida pelo ESTADO DO
+      // SERVIDOR (a conta já tem senha local e não está marcada como
+      // pendente de troca), nunca pela simples ausência de `senhaAtual` no
+      // corpo. Antes, bastava o cliente omitir o campo para pular a
+      // checagem inteira — um token JWT vazado (sessão aberta em máquina
+      // compartilhada, XSS, log) virava sequestro de conta permanente, já
+      // que trocar a senha não invalida os tokens já emitidos.
+      //
+      // A única troca que legitimamente dispensa a senha atual é a de uma
+      // conta ainda sem senha local (ex.: onboarding de login via Google) ou
+      // já marcada como `senhaTemporaria` pelo próprio servidor (reset via
+      // e-mail, ou senha provisória dada pelo admin) — nesses casos a prova
+      // de identidade já veio por outro canal.
+      const usuarioAtual = souEuMesmo ? await this.prisma.usuario.findUnique({ where: { id } }) : null
+      const precisaConfirmarSenhaAtual = souEuMesmo && Boolean(usuarioAtual?.senha) && !usuarioAtual?.senhaTemporaria
+      if (precisaConfirmarSenhaAtual) {
+        const confere = dto.senhaAtual && (await bcrypt.compare(dto.senhaAtual, usuarioAtual!.senha!))
         if (!confere) {
           throw new BadRequestException('Senha atual incorreta.')
         }

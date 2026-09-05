@@ -10,7 +10,8 @@ function criarPrismaFake (seed: { perfis?: any[], ferias?: any[] } = {}) {
   return {
     ferias,
     perfilRH: {
-      async findUnique ({ where: { usuarioId } }: any) { return perfis.find(p => p.usuarioId === usuarioId) ?? null }
+      async findUnique ({ where: { usuarioId } }: any) { return perfis.find(p => p.usuarioId === usuarioId) ?? null },
+      async findMany ({ where }: any) { return perfis.filter(p => p.gestorId === where.gestorId) }
     },
     solicitacaoFerias: {
       async findUnique ({ where: { id } }: any) { return ferias.find(f => f.id === id) ?? null },
@@ -26,7 +27,7 @@ function criarPrismaFake (seed: { perfis?: any[], ferias?: any[] } = {}) {
       },
       async findMany ({ where }: any) {
         return ferias.filter(f =>
-          (!where?.usuarioId || f.usuarioId === where.usuarioId) &&
+          (!where?.usuarioId || (where.usuarioId.in ? where.usuarioId.in.includes(f.usuarioId) : f.usuarioId === where.usuarioId)) &&
           (!where?.status?.in || where.status.in.includes(f.status))
         )
       }
@@ -142,6 +143,51 @@ describe('FeriasService', () => {
         .rejects.toBeInstanceOf(ConflictException)
     })
 
+    it('conta os dias de um período que atravessa a virada do ano contra o limite de 60/ano de CADA ano tocado, mesmo sem sobrepor a solicitação existente', async () => {
+      // Regressão do bug original: f1 (60 dias, 02/dez/2026-30/jan/2027) usa
+      // 30 dias de 2026 e 30 dias de 2027. Uma segunda solicitação de 60 dias
+      // começando logo depois que f1 termina (31/jan/2027-31/mar/2027, sem
+      // se sobrepor a f1) usa mais 60 dias inteiramente em 2027. Antes do
+      // fix, o filtro "mesmo ano de início" (2026 vs 2027) escondia f1 da
+      // segunda checagem, e as duas solicitações juntas aprovavam 120 dias
+      // corridos de férias — quase o dobro do limite anual.
+      const { service } = criarService({
+        perfis: [{ usuarioId: 'u1' }],
+        ferias: [{
+          id: 'f1',
+          usuarioId: 'u1',
+          status: 'aprovada',
+          dias: 60,
+          dataInicio: parseDataLocal('2026-12-02'),
+          dataFim: parseDataLocal('2027-01-30')
+        }]
+      })
+      await expect(service.solicitar('u1', { dataInicio: '2027-01-31', dataFim: '2027-03-31' }))
+        .rejects.toBeInstanceOf(BadRequestException)
+    })
+
+    it('recusa quando o total ratreado por ano civil ultrapassa 60 dias, mesmo sem sobrepor a outra solicitação do mesmo ano de destino', async () => {
+      const { service } = criarService({
+        perfis: [{ usuarioId: 'u1' }],
+        ferias: [{
+          id: 'f1',
+          usuarioId: 'u1',
+          status: 'aprovada',
+          dias: 45,
+          // 45 dias inteiramente em 2027 (jan-fev).
+          dataInicio: parseDataLocal('2027-01-01'),
+          dataFim: parseDataLocal('2027-02-14')
+        }]
+      })
+      // Novo período começa logo depois que f1 termina (sem sobreposição de
+      // datas), mas soma mais 45 dias em 2027 — 45 + 45 = 90 > 60 no mesmo
+      // ano civil, mesmo que o ano de INÍCIO da nova solicitação seja o
+      // mesmo de f1 (o bug original só aparecia quando os anos de início
+      // diferiam; este caso cobre o rateio por ano civil em si).
+      await expect(service.solicitar('u1', { dataInicio: '2027-02-15', dataFim: '2027-03-31' }))
+        .rejects.toBeInstanceOf(BadRequestException)
+    })
+
     it('permite quando não há sobreposição nem estouro de limite', async () => {
       const { service } = criarService({
         perfis: [{ usuarioId: 'u1' }],
@@ -179,6 +225,28 @@ describe('FeriasService', () => {
       const resultado = await service.listar(solicitante)
       expect(resultado).toHaveLength(2)
     })
+
+    it('gestor vê só as próprias férias e as do time que reporta direto a ele', async () => {
+      const { service } = criarService({
+        perfis: [{ usuarioId: 'subordinado', gestorId: 'gestor1' }, { usuarioId: 'outroTime', gestorId: 'outroGestor' }],
+        ferias: [
+          { id: 'f1', usuarioId: 'gestor1', status: 'pendente', dias: 5, dataInicio: parseDataLocal('2026-12-01'), dataFim: parseDataLocal('2026-12-05') },
+          { id: 'f2', usuarioId: 'subordinado', status: 'pendente', dias: 5, dataInicio: parseDataLocal('2026-12-01'), dataFim: parseDataLocal('2026-12-05') },
+          { id: 'f3', usuarioId: 'outroTime', status: 'pendente', dias: 5, dataInicio: parseDataLocal('2026-12-01'), dataFim: parseDataLocal('2026-12-05') }
+        ]
+      })
+      const solicitante: any = { id: 'gestor1', role: 'gestor' }
+      const resultado = await service.listar(solicitante)
+      expect(resultado.map((f: any) => f.id).sort()).toEqual(['f1', 'f2'])
+    })
+
+    it('gestor não pode listar férias de quem não reporta a ele', async () => {
+      const { service } = criarService({
+        perfis: [{ usuarioId: 'outroTime', gestorId: 'outroGestor' }]
+      })
+      const solicitante: any = { id: 'gestor1', role: 'gestor' }
+      await expect(service.listar(solicitante, 'outroTime')).rejects.toBeInstanceOf(ForbiddenException)
+    })
   })
 
   describe('decidir', () => {
@@ -202,6 +270,38 @@ describe('FeriasService', () => {
       expect(resultado.status).toBe('aprovada')
       expect(prismaFake.ferias[0].decididoPorId).toBe('rh1')
       expect(auditoriaFake.registrar).toHaveBeenCalledWith(expect.objectContaining({ acao: 'ferias.aprovar' }))
+    })
+
+    it('gestor aprova férias de um subordinado direto', async () => {
+      const { service, prismaFake } = criarService({
+        perfis: [{ usuarioId: 'subordinado', gestorId: 'gestor1' }],
+        ferias: [{ id: 'f1', usuarioId: 'subordinado', status: 'pendente', dias: 5 }]
+      })
+      const solicitante: any = { id: 'gestor1', role: 'gestor' }
+
+      const resultado = await service.decidir('f1', { status: 'aprovada' }, solicitante)
+
+      expect(resultado.status).toBe('aprovada')
+      expect(prismaFake.ferias[0].decididoPorId).toBe('gestor1')
+    })
+
+    it('gestor não pode decidir férias de quem não é subordinado direto dele', async () => {
+      const { service } = criarService({
+        perfis: [{ usuarioId: 'outroTime', gestorId: 'outroGestor' }],
+        ferias: [{ id: 'f1', usuarioId: 'outroTime', status: 'pendente', dias: 5 }]
+      })
+      const solicitante: any = { id: 'gestor1', role: 'gestor' }
+      await expect(service.decidir('f1', { status: 'aprovada' }, solicitante))
+        .rejects.toBeInstanceOf(ForbiddenException)
+    })
+
+    it('admin/rh não pode decidir a própria solicitação de férias', async () => {
+      const { service } = criarService({
+        ferias: [{ id: 'f1', usuarioId: 'rh1', status: 'pendente', dias: 5 }]
+      })
+      const solicitante: any = { id: 'rh1', role: 'rh' }
+      await expect(service.decidir('f1', { status: 'aprovada' }, solicitante))
+        .rejects.toBeInstanceOf(ForbiddenException)
     })
   })
 
@@ -227,6 +327,21 @@ describe('FeriasService', () => {
       })
       await expect(service.editar('f1', { dataInicio: INICIO_COM_ANTECEDENCIA, dataFim: FIM_COM_ANTECEDENCIA }, solicitanteRh))
         .rejects.toBeInstanceOf(ConflictException)
+    })
+
+    it('admin/rh não pode editar a própria solicitação de férias', async () => {
+      const { service } = criarService({
+        ferias: [{
+          id: 'f1',
+          usuarioId: 'rh1',
+          status: 'pendente',
+          dias: 5,
+          dataInicio: parseDataLocal('2026-12-01'),
+          dataFim: parseDataLocal('2026-12-05')
+        }]
+      })
+      await expect(service.editar('f1', { dataInicio: INICIO_COM_ANTECEDENCIA, dataFim: FIM_COM_ANTECEDENCIA }, solicitanteRh))
+        .rejects.toBeInstanceOf(ForbiddenException)
     })
 
     it('recusa nova data sem 90 dias de antecedência', async () => {

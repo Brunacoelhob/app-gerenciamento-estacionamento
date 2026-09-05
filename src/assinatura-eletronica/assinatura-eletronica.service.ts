@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common'
+import { ehConflitoUnico } from '../common/utils/prisma-erro.util'
 import { PrismaService } from '../prisma/prisma.service'
 import { CadastrarAssinaturaDto } from './dto/cadastrar-assinatura.dto'
 
@@ -21,8 +22,21 @@ export class AssinaturaEletronicaService {
       throw new ConflictException('Você já tem uma assinatura eletrônica cadastrada.')
     }
 
-    return await this.prisma.assinaturaEletronica.create({
-      data: { usuarioId, imagemDataUri: dto.imagemDataUri }
-    })
+    // O findUnique acima é só o caminho feliz (evita uma viagem ao banco
+    // desnecessária no caso comum) — a garantia de fato vem do
+    // @unique(usuarioId) do schema, então o create precisa tratar o P2002
+    // de duas requisições concorrentes passando pela checagem acima ao
+    // mesmo tempo; sem isso, a segunda virava um 500 genérico em vez do
+    // 409 já documentado no Swagger.
+    try {
+      return await this.prisma.assinaturaEletronica.create({
+        data: { usuarioId, imagemDataUri: dto.imagemDataUri }
+      })
+    } catch (erro) {
+      if (ehConflitoUnico(erro)) {
+        throw new ConflictException('Você já tem uma assinatura eletrônica cadastrada.')
+      }
+      throw erro
+    }
   }
 }

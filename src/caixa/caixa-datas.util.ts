@@ -15,3 +15,14 @@ export function rangeDoDiaDoBanco (dataDoBanco: Date): { inicio: Date, fim: Date
   const fim = new Date(Date.UTC(dataDoBanco.getUTCFullYear(), dataDoBanco.getUTCMonth(), dataDoBanco.getUTCDate() + 1))
   return { inicio, fim }
 }
+
+// Compara um `CaixaDiario.data` (@db.Date, volta do Postgres em meia-noite
+// UTC) contra o dia local de hoje — usar `.getTime()` direto entre um Date
+// lido do banco e um Date construído localmente (dataSemHora) compara fusos
+// diferentes e pode dar falso negativo/positivo perto da virada do dia.
+export function ehHojeNoBanco (dataDoBanco: Date): boolean {
+  const hoje = dataSemHora(new Date())
+  return dataDoBanco.getUTCFullYear() === hoje.getFullYear() &&
+    dataDoBanco.getUTCMonth() === hoje.getMonth() &&
+    dataDoBanco.getUTCDate() === hoje.getDate()
+}

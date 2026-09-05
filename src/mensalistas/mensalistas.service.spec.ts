@@ -120,7 +120,7 @@ describe('MensalistasService', () => {
       const { service } = criarService()
       const mensalista: any = await service.criar({
         nome: 'Fulano', cpf: '111.111.111-11', placa: 'ABC1234', telefone: '11999999999'
-      } as any)
+      } as any, ADMIN)
       expect(mensalista.categoriaPlano).toBe('Mensal Integral')
       expect(mensalista.ativo).toBe(true)
       expect(mensalista.valorMensalidade).toBe(0)
@@ -128,14 +128,23 @@ describe('MensalistasService', () => {
 
     it('recusa CPF duplicado com mensagem específica', async () => {
       const { service } = criarService({ mensalistas: [{ id: 'm1', cpf: '111', placa: 'AAA0000' }] })
-      await expect(service.criar({ nome: 'X', cpf: '111', placa: 'BBB1111', telefone: '119' } as any))
+      await expect(service.criar({ nome: 'X', cpf: '111', placa: 'BBB1111', telefone: '119' } as any, ADMIN))
         .rejects.toThrow('CPF')
     })
 
     it('recusa placa duplicada com mensagem específica', async () => {
       const { service } = criarService({ mensalistas: [{ id: 'm1', cpf: '111', placa: 'AAA0000' }] })
-      await expect(service.criar({ nome: 'X', cpf: '222', placa: 'AAA0000', telefone: '119' } as any))
+      await expect(service.criar({ nome: 'X', cpf: '222', placa: 'AAA0000', telefone: '119' } as any, ADMIN))
         .rejects.toThrow('placa')
+    })
+
+    it('ignora valorMensalidade do corpo quando quem cadastra não é admin', async () => {
+      const { service } = criarService()
+      const FUNCIONARIO = { id: 'u-func', role: 'funcionario', nome: 'Func', cpfPendente: false }
+      const mensalista: any = await service.criar({
+        nome: 'Fulano', cpf: '111.111.111-11', placa: 'ABC1234', telefone: '11999999999', valorMensalidade: 500
+      } as any, FUNCIONARIO)
+      expect(mensalista.valorMensalidade).toBe(0)
     })
   })
 
