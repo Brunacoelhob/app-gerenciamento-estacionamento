@@ -32,10 +32,16 @@
 
       if (ehFimDeSemana) {
         dias.push({
-          data: chaveData, diaDaSemana, ehDiaDeEscala: false,
-          horaEntrada: null, horaSaida: null,
-          horasNormais: 0, horasExtras: 0, horasForaEscala: 0,
-          falta: false, emAberto: false
+          data: chaveData,
+          diaDaSemana,
+          ehDiaDeEscala: false,
+          horaEntrada: null,
+          horaSaida: null,
+          horasNormais: 0,
+          horasExtras: 0,
+          horasForaEscala: 0,
+          falta: false,
+          emAberto: false
         })
         continue
       }
@@ -43,10 +49,16 @@
       if (dia === DIA_FALTA_EXEMPLO && !ehUltimoDia) {
         totais.faltas += 1
         dias.push({
-          data: chaveData, diaDaSemana, ehDiaDeEscala: true,
-          horaEntrada: null, horaSaida: null,
-          horasNormais: 0, horasExtras: 0, horasForaEscala: 0,
-          falta: true, emAberto: false
+          data: chaveData,
+          diaDaSemana,
+          ehDiaDeEscala: true,
+          horaEntrada: null,
+          horaSaida: null,
+          horasNormais: 0,
+          horasExtras: 0,
+          horasForaEscala: 0,
+          falta: true,
+          emAberto: false
         })
         continue
       }
@@ -54,10 +66,16 @@
       if (ehUltimoDia) {
         totais.horasNormais += 8
         dias.push({
-          data: chaveData, diaDaSemana, ehDiaDeEscala: true,
-          horaEntrada: `${chaveData}T08:03:00`, horaSaida: null,
-          horasNormais: 8, horasExtras: 0, horasForaEscala: 0,
-          falta: false, emAberto: true
+          data: chaveData,
+          diaDaSemana,
+          ehDiaDeEscala: true,
+          horaEntrada: `${chaveData}T08:03:00`,
+          horaSaida: null,
+          horasNormais: 8,
+          horasExtras: 0,
+          horasForaEscala: 0,
+          falta: false,
+          emAberto: true
         })
         continue
       }
@@ -68,11 +86,16 @@
       totais.horasExtras += horasExtras
 
       dias.push({
-        data: chaveData, diaDaSemana, ehDiaDeEscala: true,
+        data: chaveData,
+        diaDaSemana,
+        ehDiaDeEscala: true,
         horaEntrada: `${chaveData}T08:02:00`,
         horaSaida: `${chaveData}T${temHoraExtra ? '18:32' : '17:01'}:00`,
-        horasNormais: 8, horasExtras, horasForaEscala: 0,
-        falta: false, emAberto: false
+        horasNormais: 8,
+        horasExtras,
+        horasForaEscala: 0,
+        falta: false,
+        emAberto: false
       })
     }
 

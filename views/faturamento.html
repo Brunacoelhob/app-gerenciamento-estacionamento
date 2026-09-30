@@ -175,6 +175,8 @@
                                     class="fas fa-id-card me-1" aria-hidden="true"></i> Mensalistas</a></li>
                         <li class="nav-item d-none" id="nav-item-faturamento"><a class="nav-link active" aria-current="page" href="faturamento.html"><i
                                     class="fas fa-file-invoice-dollar me-1" aria-hidden="true"></i> Faturamento</a></li>
+                        <li class="nav-item d-none" id="nav-item-financeiro"><a class="nav-link" href="financeiro.html"><i
+                                    class="fas fa-sack-dollar me-1" aria-hidden="true"></i> Financeiro</a></li>
                         <li class="nav-item d-none" id="nav-item-metricas"><a class="nav-link" href="metricas.html"><i class="fas fa-chart-pie me-1"
                                     aria-hidden="true"></i> Métricas</a></li>
                         <li class="nav-item"><a class="nav-link" href="rh.html"><i class="fas fa-users me-1"
@@ -198,8 +200,11 @@
             </div>
         </div>
 
-        <!-- CARDS KPI -->
-        <div class="row g-3 mb-3" aria-live="polite">
+        <!-- CARDS KPI — MENSALISTAS -->
+        <h2 class="h6 text-muted text-uppercase fw-bold mb-2">
+            <i class="fas fa-id-card me-1" aria-hidden="true"></i>Mensalistas
+        </h2>
+        <div class="row g-3 mb-4" aria-live="polite">
             <div class="col-12 col-sm-6 col-md-3">
                 <div class="card-kpi kpi-info h-100" role="button" tabindex="0" data-kpi="previsto-mrr"
                     aria-haspopup="dialog" title="Clique para mais informações">
@@ -263,6 +268,81 @@
                         </div>
                         <div class="kpi-icon-bubble">
                             <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARDS KPI — AVULSOS (TICKETS) — bloco separado de propósito: avulso
+             não entra no ciclo de mensalidade, é receita de tarifa por hora. -->
+        <h2 class="h6 text-muted text-uppercase fw-bold mb-2">
+            <i class="fas fa-car me-1" aria-hidden="true"></i>Avulsos (Tickets)
+        </h2>
+        <div class="row g-3 mb-4" aria-live="polite">
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="card-kpi kpi-info h-100" role="button" tabindex="0" data-kpi="avulso-recebido-mes"
+                    aria-haspopup="dialog" title="Clique para mais informações">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="kpi-label">Recebido no Mês (Avulsos)</span>
+                            <div id="kpi-avulso-recebido-mes" class="kpi-value">
+                                <span class="placeholder-glow"><span class="placeholder col-8"></span></span>
+                            </div>
+                        </div>
+                        <div class="kpi-icon-bubble">
+                            <i class="fas fa-coins" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="card-kpi kpi-success h-100" role="button" tabindex="0" data-kpi="avulso-quantidade-mes"
+                    aria-haspopup="dialog" title="Clique para mais informações">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="kpi-label">Tickets Avulsos no Mês</span>
+                            <div id="kpi-avulso-quantidade-mes" class="kpi-value">
+                                <span class="placeholder-glow"><span class="placeholder col-6"></span></span>
+                            </div>
+                        </div>
+                        <div class="kpi-icon-bubble">
+                            <i class="fas fa-ticket-alt" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="card-kpi kpi-warning h-100" role="button" tabindex="0" data-kpi="avulso-ticket-medio"
+                    aria-haspopup="dialog" title="Clique para mais informações">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="kpi-label">Ticket Médio (Avulso)</span>
+                            <div id="kpi-avulso-ticket-medio" class="kpi-value">
+                                <span class="placeholder-glow"><span class="placeholder col-8"></span></span>
+                            </div>
+                        </div>
+                        <div class="kpi-icon-bubble">
+                            <i class="fas fa-receipt" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="card-kpi kpi-danger h-100" role="button" tabindex="0" data-kpi="avulso-abertos"
+                    aria-haspopup="dialog" title="Clique para mais informações">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <span class="kpi-label">Avulsos em Aberto Agora</span>
+                            <div id="kpi-avulso-abertos" class="kpi-value">
+                                <span class="placeholder-glow"><span class="placeholder col-6"></span></span>
+                            </div>
+                        </div>
+                        <div class="kpi-icon-bubble">
+                            <i class="fas fa-car-side" aria-hidden="true"></i>
                         </div>
                     </div>
                 </div>

@@ -138,12 +138,12 @@ async function seedDemoRh () {
   const senhaDemo = await bcrypt.hash('Demo@123', 12)
 
   const funcionarioDemo = await prisma.usuario.upsert({
-    where: { email: 'operador.sistema@parkgestao.com.br' },
+    where: { email: 'lucas.tavares@parkgestao.com.br' },
     update: {},
     create: {
-      nome: 'Operador de Sistema Demo',
+      nome: 'Lucas Tavares',
       cpf: '123.456.789-00',
-      email: 'operador.sistema@parkgestao.com.br',
+      email: 'lucas.tavares@parkgestao.com.br',
       senha: senhaDemo,
       telefone: '(11) 90000-0001',
       role: 'funcionario',
@@ -156,12 +156,12 @@ async function seedDemoRh () {
   })
 
   const rhDemo = await prisma.usuario.upsert({
-    where: { email: 'rh@parkgestao.com.br' },
+    where: { email: 'camila.ferreira@parkgestao.com.br' },
     update: {},
     create: {
-      nome: 'RH Demo',
+      nome: 'Camila Ferreira',
       cpf: '987.654.321-00',
-      email: 'rh@parkgestao.com.br',
+      email: 'camila.ferreira@parkgestao.com.br',
       senha: senhaDemo,
       telefone: '(11) 90000-0002',
       role: 'rh',
@@ -174,12 +174,12 @@ async function seedDemoRh () {
   })
 
   const gestorDemo = await prisma.usuario.upsert({
-    where: { email: 'gestor@parkgestao.com.br' },
+    where: { email: 'rodrigo.almeida@parkgestao.com.br' },
     update: {},
     create: {
-      nome: 'Gestor Demo',
+      nome: 'Rodrigo Almeida',
       cpf: '111.222.333-00',
-      email: 'gestor@parkgestao.com.br',
+      email: 'rodrigo.almeida@parkgestao.com.br',
       senha: senhaDemo,
       telefone: '(11) 90000-0003',
       role: 'gestor',
@@ -293,9 +293,9 @@ async function seedDemoRh () {
 
   console.log(`Etapas de carreira importadas: ${etapasCriadas.length}`)
   console.log(`Itens de PDI importados: ${itensPdiSeed.length}`)
-  console.log('Funcionário de demonstração de RH: operador.sistema@parkgestao.com.br (senha: Demo@123)')
-  console.log('Usuário de RH de demonstração: rh@parkgestao.com.br (senha: Demo@123)')
-  console.log('Usuário de gestor de demonstração: gestor@parkgestao.com.br (senha: Demo@123)')
+  console.log('Funcionário de demonstração de RH: lucas.tavares@parkgestao.com.br (senha: Demo@123)')
+  console.log('Usuário de RH de demonstração: camila.ferreira@parkgestao.com.br (senha: Demo@123)')
+  console.log('Usuário de gestor de demonstração: rodrigo.almeida@parkgestao.com.br (senha: Demo@123)')
 }
 
 main()

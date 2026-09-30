@@ -106,7 +106,8 @@ async function carregarFaturamento () {
   try {
     const [mensalidades] = await Promise.all([
       ApiService.getMensalidades(),
-      atualizarKpisFaturamento()
+      atualizarKpisFaturamento(),
+      atualizarKpisAvulsosFaturamento()
     ])
     mensalidadesCache = mensalidades || []
     popularFiltroReferencia()
@@ -354,6 +355,42 @@ async function atualizarKpisFaturamento () {
   }
 }
 
+// Estado com o detalhamento por trás de cada KPI de avulsos, preenchido em
+// atualizarKpisAvulsosFaturamento() e consumido pelo modal de detalhes
+// (mesmo papel de kpiFaturamentoDetalhes, só que pro bloco "Avulsos").
+let kpiAvulsosFaturamentoDetalhes = {
+  receitaMesAtual: 0,
+  quantidadeMesAtual: 0,
+  ticketMedio: 0,
+  abertosAgora: 0
+}
+
+// Busca os KPIs de faturamento avulso (bloco separado, sem misturar com os
+// KPIs de mensalista acima) — ver TicketsService.calcularKpisAvulsos.
+async function atualizarKpisAvulsosFaturamento () {
+  const elRecebido = document.getElementById('kpi-avulso-recebido-mes')
+  const elQuantidade = document.getElementById('kpi-avulso-quantidade-mes')
+  const elTicketMedio = document.getElementById('kpi-avulso-ticket-medio')
+  const elAbertos = document.getElementById('kpi-avulso-abertos')
+
+  let kpis
+  try {
+    kpis = await ApiService.getTicketsKpisAvulsos()
+  } catch (error) {
+    console.error('Erro ao carregar KPIs de avulsos:', error)
+    return
+  }
+
+  kpiAvulsosFaturamentoDetalhes = kpis
+
+  const { receitaMesAtual, quantidadeMesAtual, ticketMedio, abertosAgora } = kpis
+
+  if (elRecebido) elRecebido.textContent = `R$ ${receitaMesAtual.toFixed(2).replace('.', ',')}`
+  if (elQuantidade) elQuantidade.textContent = String(quantidadeMesAtual)
+  if (elTicketMedio) elTicketMedio.textContent = `R$ ${ticketMedio.toFixed(2).replace('.', ',')}`
+  if (elAbertos) elAbertos.textContent = String(abertosAgora)
+}
+
 /**
  * Abre um modal explicando de onde vem o número de um card de KPI da tela
  * de Faturamento (mesmo padrão usado no Dashboard e em Métricas), usando o
@@ -393,6 +430,34 @@ function abrirDetalhesKpiFaturamento (chave) {
       html = `<p class="text-muted mb-2">Mensalista ativo cujo último ciclo pago já venceu, ou que nunca teve um ciclo pago — não significa atraso, pois a cobrança só é gerada quando o veículo aparece na cancela, mas sinaliza quem está sem cobertura vigente agora.</p>
         <p class="mb-2"><strong>${d.semCicloAtivo}</strong> de <strong>${d.mensalistasAtivosQtd}</strong> mensalista(s) ativo(s):</p>
         <ul class="text-start">${itens || '<li class="text-muted">Nenhum mensalista nesta condição.</li>'}</ul>`
+      break
+    }
+    case 'avulso-recebido-mes': {
+      const a = kpiAvulsosFaturamentoDetalhes
+      title = 'Recebido no Mês (Avulsos)'
+      html = `<p class="text-muted mb-2">Soma do valor de tickets <strong>sem mensalista</strong> (cobrados por tarifa/hora) já fechados este mês — diferente do bloco "Mensalistas" acima, aqui não existe ciclo nem referência: é sempre o mês corrente, pela data de saída do veículo.</p>
+        <p class="fs-5 mb-0"><strong>${a.quantidadeMesAtual}</strong> ticket(s) avulso(s) fechado(s) somam <strong>R$ ${a.receitaMesAtual.toFixed(2).replace('.', ',')}</strong>.</p>`
+      break
+    }
+    case 'avulso-quantidade-mes': {
+      const a = kpiAvulsosFaturamentoDetalhes
+      title = 'Tickets Avulsos no Mês'
+      html = `<p class="text-muted mb-2">Quantidade de tickets sem mensalista (cobrados por tarifa/hora) fechados no mês corrente, pela data de saída do veículo.</p>
+        <p class="fs-5 mb-0"><strong>${a.quantidadeMesAtual}</strong> ticket(s) avulso(s) fechado(s) neste mês.</p>`
+      break
+    }
+    case 'avulso-ticket-medio': {
+      const a = kpiAvulsosFaturamentoDetalhes
+      title = 'Ticket Médio (Avulso)'
+      html = `<p class="text-muted mb-2">Recebido no mês (avulsos) dividido pela quantidade de tickets avulsos fechados no mês.</p>
+        <p class="fs-5 mb-0">R$ ${a.receitaMesAtual.toFixed(2).replace('.', ',')} ÷ ${a.quantidadeMesAtual} ticket(s) = <strong>R$ ${a.ticketMedio.toFixed(2).replace('.', ',')}</strong></p>`
+      break
+    }
+    case 'avulso-abertos': {
+      const a = kpiAvulsosFaturamentoDetalhes
+      title = 'Avulsos em Aberto Agora'
+      html = `<p class="text-muted mb-2">Tickets sem mensalista atualmente abertos (veículos ainda estacionados) — receita ainda não realizada, pois o valor só é calculado e gravado no momento do fechamento.</p>
+        <p class="fs-5 mb-0"><strong>${a.abertosAgora}</strong> ticket(s) avulso(s) em aberto neste momento.</p>`
       break
     }
     default:

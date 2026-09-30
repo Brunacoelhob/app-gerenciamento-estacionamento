@@ -794,9 +794,15 @@
 
     try {
       const perfil = await ApiService.getMeuPerfilRh()
-      const admin = typeof AuthService !== 'undefined' && AuthService.ehAdmin()
+      // RH, admin e gestor decidem solicitações mesmo sem ter perfil de RH
+      // próprio cadastrado — antes só admin entrava aqui, e um RH/gestor sem
+      // perfil ficava preso na mensagem de "sem perfil", sem conseguir
+      // ver/aprovar nada. Gestor só aprova o próprio time (RolesGuard aceita
+      // a chamada, o backend barra se a solicitação não for de um
+      // subordinado direto — ver FeriasService.decidir).
+      const podeAprovar = typeof AuthService !== 'undefined' && AuthService.podeGerenciarFuncionarios()
 
-      if (!perfil && !admin) {
+      if (!perfil && !podeAprovar) {
         semPerfilEl?.classList.remove('d-none')
         return
       }
@@ -808,13 +814,13 @@
       if (perfil) {
         tarefas.push(carregarMinhasFerias())
       } else {
-        // Admin sem perfil de RH próprio: ele resolve solicitações, não tira
-        // férias como funcionário — some com o saldo/formulário pessoal mas
-        // mantém acesso total às aprovações da equipe.
+        // RH/admin/gestor sem perfil de RH próprio: resolve solicitações,
+        // não tira férias como funcionário — some com o saldo/formulário
+        // pessoal mas mantém acesso às aprovações da equipe.
         ocultarAcoesPessoaisDeFerias()
       }
 
-      if (typeof AuthService !== 'undefined' && AuthService.ehRhOuAdmin()) {
+      if (podeAprovar) {
         document.getElementById('card-aprovacoes-ferias')?.classList.remove('d-none')
         tarefas.push(carregarAprovacoesPendentesFerias())
       }
@@ -831,6 +837,7 @@
     document.getElementById('ferias-saldo-resumo')?.classList.add('d-none')
     document.getElementById('card-solicitar-ferias')?.classList.add('d-none')
     document.getElementById('card-minhas-ferias')?.classList.add('d-none')
+    document.getElementById('ferias-aviso-aprovador-sem-perfil')?.classList.remove('d-none')
   }
 
   async function carregarMinhasFerias () {
@@ -891,6 +898,11 @@
         return
       }
 
+      // Correção de datas (Editar) continua exclusiva de RH/admin — Gestor
+      // só aprova/rejeita o próprio time (ver FeriasController.editar, que
+      // não aceita o papel 'gestor').
+      const podeEditarDatas = typeof AuthService !== 'undefined' && AuthService.ehRhOuAdmin()
+
       tbody.innerHTML = pendentes.map(s => `
         <tr>
           <td>${ApiService.sanitizeText(s.usuario?.nome || s.usuarioId)}</td>
@@ -898,10 +910,12 @@
           <td>${formatarDataBrFerias(s.dataFim)}</td>
           <td>${s.dias}</td>
           <td>
-            <button type="button" class="btn btn-sm btn-outline-secondary me-1 btn-editar-ferias"
-              data-id="${s.id}" data-inicio="${String(s.dataInicio).slice(0, 10)}" data-fim="${String(s.dataFim).slice(0, 10)}">
-              <i class="fas fa-pen" aria-hidden="true"></i> Editar
-            </button>
+            ${podeEditarDatas
+              ? `<button type="button" class="btn btn-sm btn-outline-secondary me-1 btn-editar-ferias"
+                  data-id="${s.id}" data-inicio="${String(s.dataInicio).slice(0, 10)}" data-fim="${String(s.dataFim).slice(0, 10)}">
+                  <i class="fas fa-pen" aria-hidden="true"></i> Editar
+                </button>`
+              : ''}
             <button type="button" class="btn btn-sm btn-outline-success me-1 btn-aprovar-ferias" data-id="${s.id}">
               <i class="fas fa-check" aria-hidden="true"></i> Aprovar
             </button>
@@ -1950,6 +1964,12 @@ async function baixarContratoTrabalhoPdf (id) {
     })
     document.getElementById('btn-exportar-auditoria-csv')?.addEventListener('click', () => exportarAuditoria('csv'))
     document.getElementById('btn-exportar-auditoria-excel')?.addEventListener('click', () => exportarAuditoria('excel'))
+
+    // Recarrega também toda vez que a aba "Auditoria" é aberta (não só no
+    // carregamento da página) — cobre tanto quem chega já nela quanto quem
+    // navega pra ela depois de um tempo na página, trazendo a lista sempre
+    // atualizada sem precisar clicar em "Filtrar".
+    document.getElementById('rh-tab-auditoria-btn')?.addEventListener('shown.bs.tab', () => carregarAuditoria())
 
     carregarAuditoria()
   })

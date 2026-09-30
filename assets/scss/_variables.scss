@@ -84,3 +84,27 @@ $transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 $shadow-sm: 0 2px 4px -1px rgba(0, 0, 0, 0.04);
 $shadow-md: 0 6px 18px -2px rgba(0, 0, 0, 0.06);
 $shadow-lg: 0 16px 32px -4px rgba(0, 0, 0, 0.08);
+
+/* --------------------------------------------------------------------------
+   9. PALETA DE VARIANTES (KPI & Cards "Sobre")
+   Fonte única para as 7 cores de categoria usadas nas bolhas de ícone dos
+   KPIs (.kpi-icon-bubble) e nos cards clicáveis da página Sobre
+   (.card-sobre.kpi-*). Antes esses valores viviam duplicados em dois blocos
+   de _components.scss e de novo, hardcoded, em assets/js/controllers/sobre.js
+   (o cabeçalho do modal precisa da cor via estilo inline, sem poder herdar a
+   custom property do card clicado). Agora os três lugares partem deste mapa:
+   os dois blocos SCSS via @each (ver _components.scss) e o JS lendo as
+   custom properties --variant-*-* geradas em :root (ver main.scss).
+   -------------------------------------------------------------------------- */
+$variantes-kpi: (
+  'primary':   (accent: #1a73e8, grad-1: #e8f0fe, grad-2: #d2e3fc, shadow-alpha: 0.18, glow-alpha: 0.22),
+  'info':      (accent: #0284c7, grad-1: #e0f2fe, grad-2: #bae6fd, shadow-alpha: 0.18, glow-alpha: 0.22),
+  'warning':   (accent: #b06000, grad-1: #fef7e0, grad-2: #feefc3, shadow-alpha: 0.18, glow-alpha: 0.2),
+  'success':   (accent: #0d652d, grad-1: #e6f4ea, grad-2: #ceebd5, shadow-alpha: 0.18, glow-alpha: 0.2),
+  'secondary': (accent: #334155, grad-1: #f1f5f9, grad-2: #e2e8f0, shadow-alpha: 0.15, glow-alpha: 0.18),
+  // Variante extra (além das 6 do Bootstrap) usada nos cards de "Regras de
+  // Negócio" da página Sobre, pra dar identidade própria a mais uma
+  // categoria sem repetir cor com nenhuma das outras.
+  'purple':    (accent: #7c3aed, grad-1: #f3e8ff, grad-2: #e9d5ff, shadow-alpha: 0.18, glow-alpha: 0.22),
+  'danger':    (accent: #c5221f, grad-1: #fce8e6, grad-2: #fad2cf, shadow-alpha: 0.18, glow-alpha: 0.22),
+);

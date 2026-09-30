@@ -427,7 +427,6 @@ async function abrirModalNovoFuncionario () {
         email,
         telefone,
         endereco: montarEnderecoFinal('swal-func'),
-        cep,
         dataNascimento,
         role,
         senha,
@@ -465,7 +464,6 @@ async function abrirModalEditarFuncionario (id) {
   const usuario = (await ApiService.getUsuarioPorId(id)) || usuarioCache
 
   const enderecoAtual = desmontarEndereco(usuario.endereco)
-  enderecoAtual.cep = usuario.cep || ''
 
   const { value: formValues } = await Swal.fire({
     title: 'Editar Funcionário',
@@ -608,7 +606,6 @@ async function abrirModalEditarFuncionario (id) {
         email,
         telefone,
         endereco: montarEnderecoFinal('swal-func'),
-        cep,
         dataNascimento,
         role
       }

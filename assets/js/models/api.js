@@ -363,6 +363,12 @@ class ApiService {
    * e a exportação (CSV/Excel) usa pra pegar todo o resultado, não só uma
    * página (ver TicketsController.listar em src/tickets/tickets.controller.ts).
    */
+  // KPIs de faturamento avulso (bloco separado dos KPIs de mensalista na
+  // tela de Faturamento) — ver TicketsService.calcularKpisAvulsos.
+  static async getTicketsKpisAvulsos () {
+    return await this.request('tickets/kpis-avulsos')
+  }
+
   static async getTickets (params) {
     if (!params) return await this.request('tickets')
 
@@ -891,6 +897,77 @@ class ApiService {
 
   static async removerItemPdi (itemId) {
     return await this.request(`pdi/item/${itemId}`, { method: 'DELETE' })
+  }
+
+  // --- REQUISIÇÕES DO MÓDULO FINANCEIRO (admin/financeiro) ---
+  // DRE simplificado (receita - despesa = lucro) já calculado no servidor —
+  // ver src/financeiro/financeiro.service.ts. Despesas recorrentes (aluguel,
+  // internet etc.) geram sua ocorrência do mês sozinhas no primeiro acesso a
+  // qualquer um destes endpoints (ver DespesasRecorrentesService).
+
+  static async getFinanceiroResumo (referencia) {
+    const query = referencia ? `?referencia=${encodeURIComponent(referencia)}` : ''
+    return await this.request(`financeiro/resumo${query}`)
+  }
+
+  static async getFinanceiroEvolucao (meses = 6) {
+    return await this.request(`financeiro/evolucao?meses=${encodeURIComponent(meses)}`)
+  }
+
+  static async getDespesas ({ referencia, status, categoria } = {}) {
+    const params = new URLSearchParams()
+    if (referencia) params.set('referencia', referencia)
+    if (status) params.set('status', status)
+    if (categoria) params.set('categoria', categoria)
+    const query = params.toString()
+    return await this.request(`despesas${query ? `?${query}` : ''}`)
+  }
+
+  static async criarDespesa (data) {
+    const payload = {
+      categoria: this.sanitizeText(data.categoria),
+      descricao: this.sanitizeText(data.descricao),
+      valor: Number(data.valor) || 0,
+      dataVencimento: data.dataVencimento,
+      ...(data.observacoes ? { observacoes: this.sanitizeText(data.observacoes) } : {})
+    }
+    return await this.request('despesas', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  static async atualizarDespesa (id, data) {
+    return await this.request(`despesas/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+  }
+
+  static async removerDespesa (id) {
+    return await this.request(`despesas/${id}`, { method: 'DELETE' })
+  }
+
+  static async getDespesasRecorrentes (incluirInativas = false) {
+    const query = incluirInativas ? '?incluirInativas=true' : ''
+    return await this.request(`despesas-recorrentes${query}`)
+  }
+
+  static async criarDespesaRecorrente (data) {
+    const payload = {
+      categoria: this.sanitizeText(data.categoria),
+      descricao: this.sanitizeText(data.descricao),
+      valor: Number(data.valor) || 0,
+      diaVencimento: Number(data.diaVencimento)
+    }
+    return await this.request('despesas-recorrentes', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  static async desativarDespesaRecorrente (id) {
+    return await this.request(`despesas-recorrentes/${id}/desativar`, { method: 'PATCH' })
   }
 
   // --- REQUISIÇÕES DE AUDITORIA (admin/rh) ---

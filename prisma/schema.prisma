@@ -64,6 +64,11 @@ enum StatusMensalidade {
   cancelada
 }
 
+enum StatusDespesa {
+  pendente
+  paga
+}
+
 model Usuario {
   id              String    @id @default(cuid())
   nome            String
@@ -107,6 +112,9 @@ model Usuario {
   subordinadosRH           PerfilRH[]                 @relation("HierarquiaRh")
   contratosTrabalho        ContratoTrabalho[]         @relation("ContratoDoUsuario")
   contratosTrabalhoGerados ContratoTrabalho[]         @relation("ContratoGeradoPor")
+  despesasCriadas            Despesa[]                @relation("DespesaCriadaPor")
+  despesasAlteradas          Despesa[]                @relation("DespesaAlteradaPor")
+  despesasRecorrentesCriadas DespesaRecorrente[]       @relation("DespesaRecorrenteCriadaPor")
 
   @@map("usuarios")
 }
@@ -639,6 +647,82 @@ model Mensalidade {
   // referencia = ?) em MensalidadesService.calcularKpis.
   @@index([status, referencia])
   @@map("mensalidades")
+}
+
+/**
+ * Molde de uma despesa que se repete todo mês (ex.: aluguel, internet) —
+ * separado da ocorrência lançada (Despesa) no mesmo espírito do par
+ * Mensalista/Mensalidade: este model é a "regra", Despesa é o "lançamento"
+ * de um mês específico. Não existe scheduler/cron no projeto para gerar a
+ * ocorrência do mês sozinho — DespesasRecorrentesService.garantirOcorrenciasDoMes
+ * gera de forma preguiçosa (lazy), no primeiro acesso à tela Financeiro
+ * daquele mês, mesmo padrão já usado em MensalidadeCicloService pra ciclo de
+ * mensalista.
+ */
+model DespesaRecorrente {
+  id            String   @id @default(cuid())
+  categoria     String
+  descricao     String
+  valor         Decimal  @db.Decimal(10, 2)
+  // Dia do mês em que a ocorrência vence (1-28 — evita ambiguidade em meses
+  // curtos; ver clamp em DespesasRecorrentesService).
+  diaVencimento Int
+  // Desativar para de gerar ocorrências futuras; não apaga as já lançadas.
+  ativo         Boolean  @default(true)
+  criadoPor     Usuario  @relation("DespesaRecorrenteCriadaPor", fields: [criadoPorId], references: [id])
+  criadoPorId   String
+  criadoEm      DateTime @default(now())
+
+  despesas Despesa[]
+
+  @@map("despesas_recorrentes")
+}
+
+/**
+ * Uma despesa/conta a pagar — avulsa (despesaRecorrenteId nulo) ou uma
+ * ocorrência mensal gerada a partir de um DespesaRecorrente. "Atrasada" não é
+ * um status guardado (evitaria precisar de um job pra ficar em dia); é
+ * status = pendente com dataVencimento no passado, calculado ao vivo em
+ * FinanceiroService.
+ */
+model Despesa {
+  id             String        @id @default(cuid())
+  categoria      String
+  descricao      String
+  valor          Decimal       @db.Decimal(10, 2)
+  referencia     String        // mês de competência, "YYYY-MM"
+  dataVencimento DateTime      @db.Date
+  status         StatusDespesa @default(pendente)
+  dataPagamento  DateTime?
+  formaPagamento String?
+
+  // Comprovante de pagamento (imagem ou PDF), guardado como data URI
+  // base64 — mesmo padrão já usado em Mensalidade.comprovanteAnexo.
+  comprovanteAnexo       String? @db.Text
+  comprovanteNomeArquivo String?
+
+  observacoes String? @db.Text
+
+  despesaRecorrente   DespesaRecorrente? @relation(fields: [despesaRecorrenteId], references: [id])
+  despesaRecorrenteId String?
+
+  criadoPor     Usuario   @relation("DespesaCriadaPor", fields: [criadoPorId], references: [id])
+  criadoPorId   String
+  // Quem deu baixa (marcou como paga) — nulo enquanto pendente.
+  alteradoPor   Usuario?  @relation("DespesaAlteradaPor", fields: [alteradoPorId], references: [id], onDelete: SetNull)
+  alteradoPorId String?
+  alteradoEm    DateTime?
+  criadoEm      DateTime  @default(now())
+
+  // Impede gerar duas ocorrências do mesmo molde no mesmo mês (idempotência
+  // da geração preguiçosa); despesas avulsas (despesaRecorrenteId nulo) não
+  // são restringidas por este índice — Postgres trata NULL como valor
+  // distinto em índice único.
+  @@unique([despesaRecorrenteId, referencia])
+  // Cobre o resumo financeiro (WHERE status = ? AND referencia = ?).
+  @@index([status, referencia])
+  @@index([categoria])
+  @@map("despesas")
 }
 
 model Vaga {

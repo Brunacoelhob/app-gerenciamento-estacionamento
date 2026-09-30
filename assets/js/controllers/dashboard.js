@@ -195,7 +195,7 @@ function abrirDetalhesKpi (chave) {
   const periodoRealtimeHtml = `<p class="text-muted small mb-3"><i class="fas fa-satellite-dish me-1" aria-hidden="true"></i>Instantâneo do estado atual, consultado às ${horaAgora} de ${dataAgora}.</p>`
   const periodoHistoricoHtml = k.dataInicioHistorico
     ? `<p class="text-muted small mb-3"><i class="fas fa-calendar-day me-1" aria-hidden="true"></i>Acumulado de ${new Date(k.dataInicioHistorico).toLocaleDateString('pt-BR')} até hoje (${dataAgora}).</p>`
-    : `<p class="text-muted small mb-3"><i class="fas fa-calendar-day me-1" aria-hidden="true"></i>Nenhum ticket fechado ainda para calcular esse período.</p>`
+    : '<p class="text-muted small mb-3"><i class="fas fa-calendar-day me-1" aria-hidden="true"></i>Nenhum ticket fechado ainda para calcular esse período.</p>'
 
   const listaPorTipo = contagem => {
     const itens = Object.entries(contagem || {})
@@ -481,7 +481,7 @@ function atualizarSubtextosPeriodoKPIs (kpis) {
   const textoRealtime = `<i class="fas fa-satellite-dish" aria-hidden="true"></i>Agora · ${horaAgora}`
   const textoHistorico = kpis.dataInicioHistorico
     ? `<i class="fas fa-calendar-day" aria-hidden="true"></i>${new Date(kpis.dataInicioHistorico).toLocaleDateString('pt-BR')} – hoje`
-    : `<i class="fas fa-calendar-day" aria-hidden="true"></i>Sem dados ainda`
+    : '<i class="fas fa-calendar-day" aria-hidden="true"></i>Sem dados ainda'
 
   KPI_SUBTEXT_REALTIME_IDS.forEach(id => {
     const el = document.getElementById(id)

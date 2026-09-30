@@ -150,6 +150,8 @@
                                     class="fas fa-id-card me-1" aria-hidden="true"></i> Mensalistas</a></li>
                         <li class="nav-item d-none" id="nav-item-faturamento"><a class="nav-link" href="faturamento.html"><i
                                     class="fas fa-file-invoice-dollar me-1" aria-hidden="true"></i> Faturamento</a></li>
+                        <li class="nav-item d-none" id="nav-item-financeiro"><a class="nav-link" href="financeiro.html"><i
+                                    class="fas fa-sack-dollar me-1" aria-hidden="true"></i> Financeiro</a></li>
                         <li class="nav-item d-none" id="nav-item-metricas"><a class="nav-link" href="metricas.html"><i class="fas fa-chart-pie me-1"
                                     aria-hidden="true"></i> Métricas</a></li>
                         <li class="nav-item"><a class="nav-link active" aria-current="page" href="rh.html"><i class="fas fa-users me-1"
@@ -450,6 +452,15 @@
                 <div class="row g-3 mb-3" id="ferias-status-equipe"></div>
 
                 <div id="conteudo-ferias" class="d-none">
+                    <!-- Só aparece para RH/admin/gestor SEM perfil de RH próprio: eles
+                         aprovam férias do time, mas não têm dados de RH (escala, salário)
+                         pra tirar férias como funcionário — sem este aviso, o formulário
+                         "Solicitar Férias" simplesmente some da tela, sem explicação. -->
+                    <div id="ferias-aviso-aprovador-sem-perfil" class="alert alert-info d-none" role="status">
+                        <i class="fas fa-info-circle me-2" aria-hidden="true"></i>
+                        Sua conta não tem um perfil de RH cadastrado, então não é possível solicitar férias para si mesmo por aqui — mas você pode aprovar ou rejeitar as solicitações do time abaixo.
+                    </div>
+
                     <!-- SALDO DE FÉRIAS -->
                     <div class="row g-3 mb-3" id="ferias-saldo-resumo" aria-live="polite"></div>
 

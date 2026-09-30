@@ -15,6 +15,7 @@ import { DesempenhoModule } from './desempenho/desempenho.module'
 import { EspelhoPontoModule } from './espelho-ponto/espelho-ponto.module'
 import { EtapasCarreiraModule } from './etapas-carreira/etapas-carreira.module'
 import { FeriasModule } from './ferias/ferias.module'
+import { FinanceiroModule } from './financeiro/financeiro.module'
 import { FolhaPagamentoModule } from './folha-pagamento/folha-pagamento.module'
 import { MensalidadesModule } from './mensalidades/mensalidades.module'
 import { MensalistasModule } from './mensalistas/mensalistas.module'
@@ -67,7 +68,8 @@ import { VagasModule } from './vagas/vagas.module'
     FolhaPagamentoModule,
     DesempenhoModule,
     EtapasCarreiraModule,
-    PdiModule
+    PdiModule,
+    FinanceiroModule
   ],
   controllers: [AppController]
 })

@@ -5,10 +5,28 @@
 /* --------------------------------------------------------------------------
    1. MÓDULOS & ARQUIVOS PARCIAIS (Sintaxe Moderna Dart Sass)
    -------------------------------------------------------------------------- */
+@use 'sass:map';
 @use 'variables' as *;
 @use 'accessibility';
 @use 'components';
 @use 'dark-mode';
+
+/* --------------------------------------------------------------------------
+   1b. TOKENS EM :root (lidos em runtime pelo JS)
+   Espelha o mapa $variantes-kpi (_variables.scss) como CSS custom
+   properties. SCSS variables só existem em tempo de build — não dá pra ler
+   $variantes-kpi de dentro de um <script>. Isso permite que
+   assets/js/controllers/sobre.js monte a cor do cabeçalho do modal (estilo
+   inline, sem poder herdar a custom property do card clicado) lendo daqui
+   em vez de manter uma cópia hardcoded da paleta em JS.
+   -------------------------------------------------------------------------- */
+:root {
+  @each $nome, $v in $variantes-kpi {
+    --variant-#{$nome}-accent: #{map.get($v, 'accent')};
+    --variant-#{$nome}-grad-1: #{map.get($v, 'grad-1')};
+    --variant-#{$nome}-grad-2: #{map.get($v, 'grad-2')};
+  }
+}
 
 /* --------------------------------------------------------------------------
    2. ESTILOS GLOBAIS & RESET ESTRUTURAL

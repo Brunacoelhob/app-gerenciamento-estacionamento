@@ -44,10 +44,59 @@ body.dark-mode {
   .login-card,
   .card-kpi,
   .kpi-card,
+  .card-sobre,
   .vaga-card {
     background-color: $color-surface-dark !important;
     color: $color-text-dark !important;
     border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  // Título e descrição dos cards clicáveis da página Sobre (ver .card-sobre
+  // em _components.scss) — cinza neutro pensado pro claro, sem contraste
+  // suficiente sobre o navy escuro do card.
+  .card-sobre-title {
+    color: $color-text-dark !important;
+  }
+
+  .card-sobre-desc {
+    color: $color-text-secondary-dark !important;
+  }
+
+  // Recalibra a cor de destaque (--card-sobre-accent) de cada variante pro
+  // escuro — ela pinta a barra do topo, o ícone, o rótulo e o "Ver
+  // detalhes →" diretamente sobre o fundo navy do card. Alguns tons do claro
+  // (ex.: kpi-secondary #334155, um cinza-chumbo) quase somem nesse fundo;
+  // os outros ganham a mesma versão "neon suave" já usada no resto do tema
+  // escuro (ex.: $color-focus-outline-dark, e os verde/vermelho de
+  // .metrics-dark-panel). Não mexe no ícone dentro do card nem no cabeçalho
+  // do modal (Swal) — aqueles ficam sobre uma bolha clara própria, que já
+  // garante contraste em qualquer tema.
+  .card-sobre.kpi-primary {
+    --card-sobre-accent: #{$color-focus-outline-dark};
+  }
+
+  .card-sobre.kpi-info {
+    --card-sobre-accent: #38d9f5;
+  }
+
+  .card-sobre.kpi-warning {
+    --card-sobre-accent: #fbbf24;
+  }
+
+  .card-sobre.kpi-success {
+    --card-sobre-accent: #4ade80;
+  }
+
+  .card-sobre.kpi-secondary {
+    --card-sobre-accent: #cbd5e1;
+  }
+
+  .card-sobre.kpi-purple {
+    --card-sobre-accent: #a78bfa;
+  }
+
+  .card-sobre.kpi-danger {
+    --card-sobre-accent: #f87171;
   }
 
   .card-header,

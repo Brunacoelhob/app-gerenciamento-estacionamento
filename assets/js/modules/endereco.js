@@ -69,9 +69,17 @@ async function buscarEnderecoPorCep (idCep, prefixo) {
 }
 
 // Monta a string final de endereço (mesmo formato já usado no cadastro:
-// "Rua, número (complemento) - Bairro, Cidade - UF") a partir dos campos
-// separados preenchidos via busca de CEP.
+// "Rua, número (complemento) - Bairro, Cidade - UF - CEP: 00000-000") a
+// partir dos campos separados preenchidos via busca de CEP.
+//
+// O CEP é embutido nessa mesma string porque o modelo Usuario no banco só
+// tem a coluna `endereco` (String) — não existe uma coluna `cep` separada,
+// e ApiService.createUsuario/updateUsuario só repassam ao backend os campos
+// que CriarUsuarioDto/AtualizarUsuarioDto realmente aceitam. Sem embutir
+// aqui, o CEP era descartado antes de chegar no servidor e voltava em
+// branco (via desmontarEndereco) toda vez que o cadastro era reaberto.
 function montarEnderecoFinal (prefixo) {
+  const cep = document.getElementById(`${prefixo}-cep`)?.value.trim() || ''
   const rua = document.getElementById(`${prefixo}-rua`)?.value.trim() || ''
   const numero = document.getElementById(`${prefixo}-numero`)?.value.trim() || ''
   const complemento =
@@ -80,10 +88,11 @@ function montarEnderecoFinal (prefixo) {
   const cidade = document.getElementById(`${prefixo}-cidade`)?.value.trim() || ''
   const estado = document.getElementById(`${prefixo}-estado`)?.value.trim() || ''
 
-  if (!rua && !numero && !bairro && !cidade && !estado) return ''
+  if (!cep && !rua && !numero && !bairro && !cidade && !estado) return ''
 
   const numeroComplemento = complemento ? `${numero} (${complemento})` : numero
-  return `${rua}, ${numeroComplemento} - ${bairro}, ${cidade} - ${estado}`
+  const base = `${rua}, ${numeroComplemento} - ${bairro}, ${cidade} - ${estado}`
+  return cep ? `${base} - CEP: ${cep}` : base
 }
 
 // Bloco HTML reutilizável de CEP/endereço (cadastro e edição de funcionário,
@@ -146,14 +155,19 @@ function ligarBuscaCep (prefixo) {
 }
 
 // Separa uma string de endereço já salva no formato "Rua, número (compl) -
-// Bairro, Cidade - UF" de volta em campos, para pré-preencher a edição.
+// Bairro, Cidade - UF - CEP: 00000-000" de volta em campos, para
+// pré-preencher a edição (inclusive o CEP, embutido por montarEnderecoFinal).
 function desmontarEndereco (enderecoCompleto) {
-  const vazio = { rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' }
+  const vazio = { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' }
   if (!enderecoCompleto) return vazio
 
+  const matchCep = enderecoCompleto.match(/^(.*) - CEP:\s*(.*)$/)
+  const cep = matchCep ? matchCep[2].trim() : ''
+  const semCep = matchCep ? matchCep[1] : enderecoCompleto
+
   // Formato salvo: "Rua, número (complemento) - Bairro, Cidade - UF"
-  const partes = enderecoCompleto.split(' - ')
-  if (partes.length < 3) return { ...vazio, rua: enderecoCompleto }
+  const partes = semCep.split(' - ')
+  if (partes.length < 3) return { ...vazio, cep, rua: semCep }
 
   const [ruaNumero, bairroCidade, estado] = partes
   const matchRuaNumero = ruaNumero.match(/^(.*),\s*(.*)$/)
@@ -169,5 +183,10 @@ function desmontarEndereco (enderecoCompleto) {
     : bairroCidade.trim()
   const cidade = matchBairroCidade ? matchBairroCidade[2].trim() : ''
 
-  return { rua, numero, complemento, bairro, cidade, estado: (estado || '').trim() }
+  return { cep, rua, numero, complemento, bairro, cidade, estado: (estado || '').trim() }
 }
+
+window.montarEnderecoFinal = montarEnderecoFinal
+window.blocoEnderecoHtml = blocoEnderecoHtml
+window.ligarBuscaCep = ligarBuscaCep
+window.desmontarEndereco = desmontarEndereco

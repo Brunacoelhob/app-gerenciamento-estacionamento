@@ -635,6 +635,12 @@ function inicializarMenuUsuario () {
     navItemFaturamento.classList.toggle('d-none', !AuthService.ehFinanceiroOuAdmin())
   }
 
+  // Financeiro (receita, despesas e lucro do estacionamento inteiro) só é visível para admin/financeiro.
+  const navItemFinanceiro = document.getElementById('nav-item-financeiro')
+  if (navItemFinanceiro) {
+    navItemFinanceiro.classList.toggle('d-none', !AuthService.ehFinanceiroOuAdmin())
+  }
+
   // KPI "Faturamento Total" do Dashboard expõe receita agregada — some para quem não é admin/financeiro.
   const kpiCardFaturamento = document.getElementById('kpi-card-faturamento')
   if (kpiCardFaturamento) {

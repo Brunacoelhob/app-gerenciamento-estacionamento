@@ -1,4 +1,5 @@
 @use 'sass:color';
+@use 'sass:map';
 @use 'variables' as *;
 
 // ==========================================================================
@@ -150,53 +151,182 @@
   // bolha do ícone (uma única "etiqueta" de cor por card); o valor numérico
   // usa sempre o cinza-escuro neutro definido acima em .kpi-value, para não
   // sobrecarregar a leitura com texto colorido em todo canto.
-  &.kpi-success {
-    .kpi-icon-bubble {
-      background: linear-gradient(135deg, #e6f4ea 0%, #ceebd5 100%);
-      color: #0d652d;
-      box-shadow: 0 4px 14px rgba(13, 101, 45, 0.18);
+  // Valores vêm do mapa único $variantes-kpi (_variables.scss) — mesma fonte
+  // usada pelas variantes de .card-sobre logo abaixo e pelas custom
+  // properties --variant-*-* lidas em runtime por sobre.js.
+  @each $nome, $v in $variantes-kpi {
+    &.kpi-#{$nome} {
+      .kpi-icon-bubble {
+        background: linear-gradient(135deg, map.get($v, 'grad-1') 0%, map.get($v, 'grad-2') 100%);
+        color: map.get($v, 'accent');
+        box-shadow: 0 4px 14px rgba(map.get($v, 'accent'), map.get($v, 'shadow-alpha'));
+      }
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2b. CARDS DE CONTEÚDO CLICÁVEIS (Página Sobre) — grade de cards que abrem
+   um modal (SweetAlert2) com o detalhamento de uma categoria. Componente
+   próprio (não reaproveita .card-kpi, pensado pra um número): a cor da
+   categoria aparece na barra de destaque do topo, no ícone e no rótulo, com
+   um brilho colorido — não cinza-genérico — no hover/foco, e um "Ver
+   detalhes →" explícito no rodapé como convite claro ao clique.
+   -------------------------------------------------------------------------- */
+.card-sobre {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.5rem 1.5rem 1.25rem;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 1.25rem;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: $shadow-sm;
+  transition: transform $transition-normal, box-shadow $transition-normal,
+    border-color $transition-normal;
+
+  // Barra de destaque no topo, na cor da categoria — some ao passar pra
+  // preto-e-branco no alto contraste (ver regra mais abaixo).
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--card-sobre-accent, #{$color-focus-outline});
+    transition: height $transition-fast;
+  }
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-5px);
+    border-color: var(--card-sobre-accent, rgba(0, 0, 0, 0.12));
+    box-shadow: 0 22px 38px -14px var(--card-sobre-glow, rgba(0, 0, 0, 0.16)),
+      0 6px 14px -6px rgba(0, 0, 0, 0.05);
+
+    &::before {
+      height: 5px;
+    }
+
+    .card-sobre-cta i {
+      transform: translateX(4px);
     }
   }
 
-  &.kpi-danger {
-    .kpi-icon-bubble {
-      background: linear-gradient(135deg, #fce8e6 0%, #fad2cf 100%);
-      color: #c5221f;
-      box-shadow: 0 4px 14px rgba(197, 34, 31, 0.18);
-    }
+  &:focus-visible {
+    outline: 3px solid $color-focus-outline !important;
+    outline-offset: 3px !important;
   }
+}
 
-  &.kpi-warning {
-    .kpi-icon-bubble {
-      background: linear-gradient(135deg, #fef7e0 0%, #feefc3 100%);
-      color: #b06000;
-      box-shadow: 0 4px 14px rgba(176, 96, 0, 0.18);
-    }
-  }
+.card-sobre-icon {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1.1rem;
+  border-radius: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  background: var(--card-sobre-icon-bg);
+  color: var(--card-sobre-accent);
+}
 
-  &.kpi-primary {
-    .kpi-icon-bubble {
-      background: linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%);
-      color: #1a73e8;
-      box-shadow: 0 4px 14px rgba(26, 115, 232, 0.18);
-    }
-  }
+.card-sobre-kicker {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--card-sobre-accent);
+  margin-bottom: 0.35rem;
+}
 
-  &.kpi-secondary {
-    .kpi-icon-bubble {
-      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-      color: #334155;
-      box-shadow: 0 4px 14px rgba(51, 65, 85, 0.15);
-    }
-  }
+.card-sobre-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: $color-text-light;
+  margin-bottom: 0.5rem;
+}
 
-  &.kpi-info {
-    .kpi-icon-bubble {
-      background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-      color: #0284c7;
-      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.18);
-    }
+.card-sobre-desc {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: $color-text-muted-aaa;
+  flex-grow: 1;
+  margin-bottom: 1.1rem;
+  // Trava a descrição em 3 linhas — todo card de uma mesma grade fica com a
+  // mesma altura de bloco de texto, não importa se a frase é curta ou longa.
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-sobre-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--card-sobre-accent);
+  margin-top: auto;
+
+  i {
+    font-size: 0.7rem;
+    transition: transform $transition-fast;
   }
+}
+
+// Variantes de cor — mesmo mapa $variantes-kpi (_variables.scss) usado pelas
+// bolhas de ícone dos KPIs acima e pelas custom properties --variant-*-*
+// (main.scss), lidas em runtime por sobre.js para o cabeçalho do modal.
+@each $nome, $v in $variantes-kpi {
+  .card-sobre.kpi-#{$nome} {
+    --card-sobre-accent: #{map.get($v, 'accent')};
+    --card-sobre-icon-bg: linear-gradient(135deg, #{map.get($v, 'grad-1')} 0%, #{map.get($v, 'grad-2')} 100%);
+    --card-sobre-glow: #{rgba(map.get($v, 'accent'), map.get($v, 'glow-alpha'))};
+  }
+}
+
+// Selo colorido de "tipo de regra" (Automático / Cálculo / Restrição /
+// Segurança / Informativo) usado dentro do modal de detalhes — a mesma
+// legenda de cores vale nos 7 cards, pra criar um sistema de leitura único
+// em vez de cada categoria inventar seu próprio esquema.
+.tag-tipo-regra {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2em 0.65em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 50rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.item-regra {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.6rem 0.75rem;
+  border-radius: $border-radius-sm;
+  background-color: rgba(0, 0, 0, 0.02);
+  margin-bottom: 0.5rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+body.dark-mode .item-regra {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 /* --------------------------------------------------------------------------
@@ -550,12 +680,35 @@ body.high-contrast {
       color: #000000 !important;
     }
   }
+
+  .card-sobre {
+    background-color: #000000 !important;
+    border: 2px solid #ffffff !important;
+
+    &::before {
+      background: #ffffff !important;
+    }
+
+    .card-sobre-kicker,
+    .card-sobre-title,
+    .card-sobre-desc,
+    .card-sobre-cta {
+      color: #ffffff !important;
+    }
+
+    .card-sobre-icon {
+      background: #ffffff !important;
+      color: #000000 !important;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .card-kpi,
   .kpi-card,
   .kpi-icon-bubble,
+  .card-sobre,
+  .card-sobre-cta i,
   .vaga-card,
   .btn-accessibility-toggle {
     transition: none !important;
