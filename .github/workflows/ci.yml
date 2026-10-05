@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'fix/**']
   pull_request:
 
 jobs:
@@ -17,6 +17,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # O cliente do Prisma (generated/prisma) não é versionado: precisa ser gerado antes de testar/compilar.
+      - name: Gerar cliente Prisma
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
 
       - name: Lint
         run: npm run lint
